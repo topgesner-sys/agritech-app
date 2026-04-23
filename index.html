@@ -1811,11 +1811,20 @@ function toggleNotifPanel(){ document.getElementById('notifPanel').classList.tog
 function openModal(id){
   var el = document.getElementById(id);
   if(!el){ console.error('Modal not found:', id); alert('Error: modal ' + id + ' no encontrado'); return; }
+  el.style.display = 'flex';
+  el.style.alignItems = 'center';
+  el.style.justifyContent = 'center';
   el.classList.add('open');
   if(id==='modal-animal'){ selectedEspecie=''; renderEspecieSelectGrid(); }
   if(id==='modal-especie'){ renderEspeciesLista(); }
 }
-function closeModal(id){ var el=document.getElementById(id); if(el) el.classList.remove('open'); }
+function closeModal(id){ 
+  var el=document.getElementById(id); 
+  if(el){ 
+    el.classList.remove('open'); 
+    el.style.display = ''; 
+  } 
+}
 function openQuickAdd(){ openModal('modal-quick'); }
 // Setup modal backdrop close on click
 (function setupModals(){
