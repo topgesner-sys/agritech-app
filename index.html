@@ -1815,11 +1815,11 @@ function toggleNotifPanel(){ document.getElementById('notifPanel').classList.tog
 // ========== MODALS ==========
 function openModal(id){
   var el = document.getElementById(id);
-  if(!el){ console.error('Modal not found:', id); alert('ERROR: modal no encontrado: ' + id); return; }
+  if(!el){ console.error('Modal not found:', id); return; }
+  el.style.display = 'flex';
+  el.style.alignItems = 'center';
+  el.style.justifyContent = 'center';
   el.classList.add('open');
-  el.style.visibility = 'visible';
-  el.style.opacity = '1';
-  el.style.pointerEvents = 'all';
   if(id==='modal-animal'){ selectedEspecie=''; renderEspecieSelectGrid(); }
   if(id==='modal-especie'){ renderEspeciesLista(); }
 }
