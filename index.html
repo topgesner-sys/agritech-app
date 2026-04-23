@@ -3995,6 +3995,8 @@ function init(){
   try{renderEspecieSelectGrid();}catch(e){console.error('renderEspecieSelectGrid:',e);}
   try{renderDashboard();}catch(e){console.error('renderDashboard:',e);}
   try{checkAlertas();}catch(e){console.error('checkAlertas:',e);}
+  // Mover todos los modales directamente al body para garantizar tamaño correcto
+  document.querySelectorAll('.modal-backdrop').forEach(function(m){ document.body.appendChild(m); });
 }
 
 if(document.readyState==='loading'){
