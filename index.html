@@ -3989,6 +3989,28 @@ function init(){
   try{checkAlertas();}catch(e){console.error('checkAlertas:',e);}
 }
 
+// Global click handler para garantizar que onclicks funcionen
+document.addEventListener('click', function(e) {
+  var el = e.target;
+  // Traverse up to find element with onclick
+  while(el && el !== document.body) {
+    var oc = el.getAttribute('onclick');
+    if(oc) {
+      try {
+        // Execute the onclick
+        var fn = new Function(oc);
+        fn.call(el);
+        e.preventDefault();
+        e.stopPropagation();
+      } catch(err) {
+        console.error('Click handler error:', err.message, 'onclick:', oc);
+      }
+      return;
+    }
+    el = el.parentElement;
+  }
+}, true);
+
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded',init);
 } else {
