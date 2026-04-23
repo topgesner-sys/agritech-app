@@ -1,0 +1,17 @@
+{
+  "name": "AgriTech - Gestión Agrícola",
+  "short_name": "AgriTech",
+  "description": "Sistema integral de gestión agrícola: cosechas, trabajadores, ganadería, créditos y presupuestos.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0ede6",
+  "theme_color": "#1a3325",
+  "orientation": "any",
+  "lang": "es",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["productivity", "business"],
+  "screenshots": []
+}
