@@ -377,12 +377,6 @@ textarea{resize:vertical;min-height:72px}
 <body>
 
 <!-- SIDEBAR -->
-<script>
-window.onerror = function(msg, src, line, col, err) {
-  document.body.innerHTML = '<div style="background:#1a3325;color:#b7e4c7;font-family:monospace;padding:30px;min-height:100vh"><h2>🔧 Error detectado</h2><p><b>Mensaje:</b> ' + msg + '</p><p><b>Línea:</b> ' + line + '</p><p><b>Detalle:</b> ' + (err ? err.stack : 'N/A') + '</p></div>';
-  return true;
-};
-</script>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="logo-mark">🌿</div>
@@ -3957,7 +3951,7 @@ function exportPresupCSV(){
 // ========== INIT ==========
 function init(){
   console.log('INIT START');
-  try { seed(); console.log('seed OK'); } catch(e){ console.error('seed ERROR:', e.message, e.stack); alert('Error en seed: ' + e.message); return; }
+  try { seed(); } catch(e){ console.error('seed:', e); }
   
   const safeSet=(id,val)=>{try{const el=document.getElementById(id);if(el)el.value=val;}catch(e){}};
   const now=new Date(), f=d=>d.toISOString().split('T')[0], t=today();
