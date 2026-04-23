@@ -372,7 +372,7 @@ textarea{resize:vertical;min-height:72px}
 }
 @media(max-width:480px){.stats-grid{grid-template-columns:1fr}}
 </style>
-</head>
+\x3c/head>
 <body>
 
 <!-- SIDEBAR -->
@@ -2183,7 +2183,7 @@ function printLiquidacion(workerId){
   }).join('');
 
   const win=window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Liquidación ${w.nombre}</title>
+  win.document.write(`<!DOCTYPE html>\x3chtml>\x3chead><meta charset="UTF-8"><title>Liquidación ${w.nombre}</title>
 \x3cstyle>\nbody{font-family:Georgia,serif;max-width:800px;margin:30px auto;color:#1a1a18;padding:20px}
 .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1a3325;padding-bottom:16px;margin-bottom:24px}
 .logo{font-family:Georgia,serif;font-size:1.6rem;color:#1a3325;font-weight:700}
@@ -2206,7 +2206,7 @@ td{padding:8px;border-bottom:1px solid #eee}
 .footer{margin-top:40px;text-align:center;font-size:.7rem;color:#999;border-top:1px solid #eee;padding-top:10px}
 @media print{body{margin:10px}.no-print{display:none}}
 .print-btn{position:fixed;top:20px;right:20px;background:#2d6a4f;color:#fff;padding:10px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600}
-\x3c/style></head><body>
+\x3c/style>\x3c/head>\x3cbody>
 <button class="print-btn no-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
 <div class="head">
   <div><div class="logo">🌿 AgriTech</div><div class="sub">Gestión Agrícola</div></div>
@@ -2229,7 +2229,7 @@ td{padding:8px;border-bottom:1px solid #eee}
 <div class="footer">Documento generado por AgriTech · ${now}</div>
 \x3cscript>window.onload=()=>setTimeout(()=>window.print(),300)\x3c/script>
 
-</body></html>`);
+\x3c/body>\x3c/html>`);
   win.document.close();
   toast('🖨️ Liquidación abierta para imprimir');
 }
@@ -2788,7 +2788,7 @@ function printPDF(){
   const c2=db.cosechas.filter(c=>c.tipo==='Frutilla').reduce((s,c)=>s+(c.c2||0),0);
   const totalCost=db.costos.reduce((s,c)=>s+c.monto,0);
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><title>Reporte AgriTech</title>
+  w.document.write(`<!DOCTYPE html>\x3chtml>\x3chead><title>Reporte AgriTech</title>
   \x3cstyle>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;color:#1a1a18}
   h1{color:#1a3325;border-bottom:3px solid #2d6a4f;padding-bottom:10px}
   h2{color:#2d6a4f;margin-top:28px}
@@ -2798,7 +2798,7 @@ function printPDF(){
   .stat{display:inline-block;margin:8px 12px 8px 0;padding:12px 18px;background:#f0ede6;border-radius:8px;border-left:4px solid #2d6a4f}
   .stat-v{font-size:1.6rem;font-weight:700;color:#1a3325}
   .stat-l{font-size:.78rem;color:#6b7c6e}
-  @media print{body{margin:20px}}\x3c/style></head><body>
+  @media print{body{margin:20px}}\x3c/style>\x3c/head>\x3cbody>
   <h1>🌿 AgriTech — Reporte General</h1>
   <p>Generado el <strong>${now}</strong></p>
   <h2>📊 Resumen de Producción</h2>
@@ -2818,7 +2818,7 @@ function printPDF(){
   <table><tr><th>Nombre</th><th>Rol</th><th>Horas</th><th>Total Pagado</th></tr>
   ${db.trabajadores.map(w=>{ const h=db.jornadas.filter(j=>j.workerId===w.id).reduce((s,j)=>s+j.horas,0); const p=db.jornadas.filter(j=>j.workerId===w.id).reduce((s,j)=>s+j.pago,0); return `<tr><td>${w.nombre}</td><td>${w.rol}</td><td>${h}h</td><td>${fmtMoney(p)}</td></tr>`; }).join('')}</table>
   \x3cscript>window.onload=()=>window.print()\x3c/script>
-</body></html>`);
+\x3c/body>\x3c/html>`);
   w.document.close();
   toast('🖨️ Reporte PDF abierto para imprimir');
 }
@@ -3284,7 +3284,7 @@ function printCreditoReport(){
   const pct=totalCuotas>0?Math.round((prod.total/totalCuotas)*100):0;
   const now=new Date().toLocaleDateString('es-CL');
   const win=window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Reporte Financiero AgriTech</title>
+  win.document.write(`<!DOCTYPE html>\x3chtml>\x3chead><meta charset="UTF-8"><title>Reporte Financiero AgriTech</title>
 \x3cstyle>\nbody{font-family:Georgia,serif;max-width:860px;margin:30px auto;color:#1a1a18;padding:20px}
 .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1a3325;padding-bottom:14px;margin-bottom:20px}
 .logo{font-size:1.5rem;color:#1a3325;font-weight:700}
@@ -3308,7 +3308,7 @@ td{padding:7px 8px;border-bottom:1px solid #eee}
 .cover-pct{font-family:Georgia,serif;font-size:2.2rem;font-weight:700}
 .print-btn{position:fixed;top:20px;right:20px;background:#2d6a4f;color:#fff;padding:10px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600}
 @media print{.print-btn{display:none}}
-\x3c/style></head><body>
+\x3c/style></head>\x3cbody>
 <button class="print-btn" onclick="window.print()">🖨️ Imprimir / PDF</button>
 <div class="head">
   <div><div class="logo">🌿 AgriTech</div><div style="font-size:.7rem;color:#666;letter-spacing:2px;text-transform:uppercase;margin-top:2px">Gestión Agrícola</div></div>
@@ -3353,7 +3353,7 @@ ${db.creditos.map(c=>{const pag=db.cuotas.filter(q=>q.creditoId===c.id).reduce((
 <div style="margin-top:30px;text-align:center;font-size:.7rem;color:#999;border-top:1px solid #eee;padding-top:10px">Reporte financiero generado por AgriTech · ${now}</div>
 \x3cscript>window.onload=()=>setTimeout(()=>window.print(),400)\x3c/script>
 
-</body></html>`);
+\x3c/body>\x3c/html>`);
   win.document.close();
   toast('🖨️ Reporte abierto para imprimir');
 }
