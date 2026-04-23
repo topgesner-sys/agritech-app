@@ -142,8 +142,8 @@ textarea{resize:vertical;min-height:72px}
 #toast.show{transform:translateY(0)}
 
 /* MODALS */
-.modal-backdrop{visibility:hidden;opacity:0;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;pointer-events:none;transition:opacity .2s}
-.modal-backdrop.open{visibility:visible;opacity:1;pointer-events:all}
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
+.modal-backdrop.open{display:flex}
 .modal{background:var(--card);border-radius:var(--radius);padding:26px;width:95%;max-width:580px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:modalIn .3s cubic-bezier(.34,1.56,.64,1)}
 @keyframes modalIn{from{opacity:0;transform:scale(.92) translateY(18px)}to{opacity:1;transform:scale(1) translateY(0)}}
 .modal-title{font-family:var(--font-d);font-size:1.2rem;color:var(--green-deep);margin-bottom:18px;display:flex;align-items:center;gap:7px}
@@ -1821,10 +1821,8 @@ function openModal(id){
 function closeModal(id){ 
   var el=document.getElementById(id); 
   if(el){ 
+    el.style.display = 'none';
     el.classList.remove('open');
-    el.style.visibility = '';
-    el.style.opacity = '';
-    el.style.pointerEvents = '';
   } 
 }
 function openQuickAdd(){ openModal('modal-quick'); }
