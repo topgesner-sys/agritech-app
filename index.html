@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <title>AgriTech v2 – Gestión Agrícola Integral</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
   --green-deep:#1a3325;--green-mid:#2d6a4f;--green-light:#52b788;--green-pale:#b7e4c7;
@@ -1595,10 +1595,6 @@ textarea{resize:vertical;min-height:72px}
 <script>
 
 // Polyfill para Chart.js (por si CDN falla o carga tarde)
-window.addEventListener('error', function(e){
-  if(e && e.message === 'Script error.') return; // cross-origin, ignorar
-  console.error('App error:', e && e.message);
-});
 function _safeChart(id, cfg) {
   try {
     if(typeof Chart === 'undefined') return null;
@@ -1818,7 +1814,15 @@ function openModal(id){
 }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 function openQuickAdd(){ openModal('modal-quick'); }
-document.querySelectorAll('.modal-backdrop').forEach(m=>{ m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); }); });
+// Setup modal backdrop close on click
+(function setupModals(){
+  var backdrops = document.querySelectorAll('.modal-backdrop');
+  backdrops.forEach(function(m){ 
+    m.addEventListener('click', function(e){ 
+      if(e.target===m) m.classList.remove('open'); 
+    }); 
+  });
+})();
 
 // ========== TOAST ==========
 function toast(msg){ const t=document.getElementById('toast'); document.getElementById('toast-msg').textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
