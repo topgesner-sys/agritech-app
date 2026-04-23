@@ -1610,9 +1610,15 @@ function _safeChart(id, cfg) {
 // ========== DATA ==========
 const KEYS = ['cosechas','insumos','inventario','trabajadores','jornadas','costos','clima','eventos','animales','sanidad','reproduccion','especies','creditos','cuotas','proyecciones','presupuestos','presupItems'];
 let db = {};
-KEYS.forEach(k => { try { db[k] = JSON.parse(localStorage.getItem('agt2_'+k)||'[]'); } catch(e){ db[k]=[]; } });
 
-function save(k){ localStorage.setItem('agt2_'+k, JSON.stringify(db[k])); }
+// Safe storage wrapper - works on file:// and online
+const _store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+};
+KEYS.forEach(k => { try { db[k] = JSON.parse(_store.get('agt2_'+k)||'[]'); } catch(e){ db[k]=[]; } });
+
+function save(k){ _store.set('agt2_'+k, JSON.stringify(db[k])); }
 function genId(arr){ return arr.length ? Math.max(...arr.map(x=>x.id))+1 : 1; }
 function today(){ return new Date().toISOString().split('T')[0]; }
 function fmtDate(d){ if(!d) return '—'; const p=d.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; }
@@ -1808,11 +1814,13 @@ function toggleNotifPanel(){ document.getElementById('notifPanel').classList.tog
 
 // ========== MODALS ==========
 function openModal(id){
-  document.getElementById(id).classList.add('open');
+  var el = document.getElementById(id);
+  if(!el){ console.error('Modal not found:', id); alert('Error: modal ' + id + ' no encontrado'); return; }
+  el.classList.add('open');
   if(id==='modal-animal'){ selectedEspecie=''; renderEspecieSelectGrid(); }
   if(id==='modal-especie'){ renderEspeciesLista(); }
 }
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function closeModal(id){ var el=document.getElementById(id); if(el) el.classList.remove('open'); }
 function openQuickAdd(){ openModal('modal-quick'); }
 // Setup modal backdrop close on click
 (function setupModals(){
