@@ -3956,7 +3956,8 @@ function exportPresupCSV(){
 
 // ========== INIT ==========
 function init(){
-  try { seed(); } catch(e){ console.error('seed:', e); }
+  console.log('INIT START');
+  try { seed(); console.log('seed OK'); } catch(e){ console.error('seed ERROR:', e.message, e.stack); alert('Error en seed: ' + e.message); return; }
   
   const safeSet=(id,val)=>{try{const el=document.getElementById(id);if(el)el.value=val;}catch(e){}};
   const now=new Date(), f=d=>d.toISOString().split('T')[0], t=today();
