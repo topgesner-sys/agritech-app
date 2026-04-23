@@ -139,7 +139,7 @@ textarea{resize:vertical;min-height:72px}
 .alert-red{background:#fde8e8;border-color:#fca5a5;color:#991b1b}
 
 /* TOAST */
-#toast{position:fixed;bottom:24px;right:24px;background:var(--green-deep);color:var(--cream);padding:13px 18px;border-radius:10px;font-size:.85rem;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.28);z-index:9999;display:flex;align-items:center;gap:9px;transform:translateY(80px);transition:transform .35s cubic-bezier(.34,1.56,.64,1);pointer-events:none}
+#toast{position:fixed;bottom:24px;right:24px;background:var(--green-deep);color:var(--cream);padding:13px 18px;border-radius:10px;font-size:.85rem;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.28);z-index:9999;display:flex;align-items:center;gap:9px;transform:translateY(80px);transition:transform .35s cubic-bezier(.34,1.56,.64,1);pointer-events:all}
 #toast.show{transform:translateY(0)}
 
 /* MODALS */
@@ -1571,7 +1571,10 @@ textarea{resize:vertical;min-height:72px}
 
 
 <!-- TOAST -->
-<div id="toast">✅ <span id="toast-msg">Guardado</span></div>
+<div id="toast">
+  <span id="toast-msg">Guardado</span>
+  <button id="toast-undo-btn" onclick="undoDelete()" style="display:none;margin-left:12px;padding:4px 10px;background:var(--amber);color:var(--green-deep);border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:.8rem">↩ Deshacer</button>
+</div>
 
 
 
@@ -1845,7 +1848,15 @@ function openQuickAdd(){ openModal('modal-quick'); }
 })();
 
 // ========== TOAST ==========
-function toast(msg){ const t=document.getElementById('toast'); document.getElementById('toast-msg').textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+function toast(msg){
+  var t = document.getElementById('toast');
+  var btn = document.getElementById('toast-undo-btn');
+  document.getElementById('toast-msg').textContent = msg;
+  if(btn) btn.style.display = 'none';
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2800);
+}
 
 // ========== PHOTO PREVIEW ==========
 function previewImg(inputId, prevId){
@@ -2282,7 +2293,49 @@ function saveEvento(){
 }
 
 // ========== DELETE ==========
-function del(key,id,refresh){ if(!confirm('¿Eliminar?')) return; db[key]=db[key].filter(x=>x.id!==id); save(key); refresh(); toast('🗑️ Eliminado'); }
+// ========== SISTEMA UNDO ==========
+var _undoStack = []; // Stack de acciones deshacer
+
+function del(key, id, refresh){
+  if(!confirm('¿Eliminar?')) return;
+  // Guardar copia del elemento antes de borrar
+  var item = db[key].find(x => x.id === id);
+  if(item){
+    _undoStack.push({ key: key, item: JSON.parse(JSON.stringify(item)), refresh: refresh });
+    if(_undoStack.length > 20) _undoStack.shift(); // máximo 20 items
+  }
+  db[key] = db[key].filter(x => x.id !== id);
+  save(key);
+  refresh();
+  toastUndo('🗑️ Eliminado');
+}
+
+function undoDelete(){
+  if(_undoStack.length === 0){ toast('⚠️ Nada que deshacer'); return; }
+  var last = _undoStack.pop();
+  // Restaurar el item
+  db[last.key].push(last.item);
+  // Reordenar por id para mantener el orden original
+  db[last.key].sort(function(a,b){ return a.id - b.id; });
+  save(last.key);
+  last.refresh();
+  toast('✅ Registro restaurado correctamente');
+}
+
+function toastUndo(msg){
+  var t = document.getElementById('toast');
+  var m = document.getElementById('toast-msg');
+  var btn = document.getElementById('toast-undo-btn');
+  m.textContent = msg;
+  if(btn) btn.style.display = 'inline-block';
+  t.classList.add('show');
+  // Auto-hide after 6 seconds (longer so user can undo)
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(function(){
+    t.classList.remove('show');
+    if(btn) btn.style.display = 'none';
+  }, 6000);
+}
 
 // ========== FILTERS ==========
 function clearF(p){
