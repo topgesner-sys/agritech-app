@@ -3,17 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#1a3325">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="AgriTech">
-<meta name="mobile-web-app-capable" content="yes">
-
-
 <title>AgriTech v2 – Gestión Agrícola Integral</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
+
 :root {
   --green-deep:#1a3325;--green-mid:#2d6a4f;--green-light:#52b788;--green-pale:#b7e4c7;
   --cream:#f8f4ec;--amber:#e9a84c;--amber-dark:#c47c15;--red-soft:#e07070;
@@ -371,9 +365,11 @@ textarea{resize:vertical;min-height:72px}
   .stats-grid{grid-template-columns:1fr 1fr}
 }
 @media(max-width:480px){.stats-grid{grid-template-columns:1fr}}
+
 </style>
-\x3c/head>
+</head>
 <body>
+
 
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
@@ -1590,8 +1586,8 @@ textarea{resize:vertical;min-height:72px}
 <!-- TOAST -->
 <div id="toast">✅ <span id="toast-msg">Guardado</span></div>
 
-
 <script>
+
 
 // Polyfill para Chart.js (por si CDN falla o carga tarde)
 function _safeChart(id, cfg) {
@@ -3308,7 +3304,7 @@ td{padding:7px 8px;border-bottom:1px solid #eee}
 .cover-pct{font-family:Georgia,serif;font-size:2.2rem;font-weight:700}
 .print-btn{position:fixed;top:20px;right:20px;background:#2d6a4f;color:#fff;padding:10px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600}
 @media print{.print-btn{display:none}}
-\x3c/style></head>\x3cbody>
+\x3c/style>\x3c/head>\x3cbody>
 <button class="print-btn" onclick="window.print()">🖨️ Imprimir / PDF</button>
 <div class="head">
   <div><div class="logo">🌿 AgriTech</div><div style="font-size:.7rem;color:#666;letter-spacing:2px;text-transform:uppercase;margin-top:2px">Gestión Agrícola</div></div>
@@ -3989,19 +3985,7 @@ if(document.readyState==='loading'){
 } else {
   init();
 }
-</script>
 
-<script>
-if('serviceWorker' in navigator && location.protocol === 'https:'){
-  navigator.serviceWorker.getRegistrations().then(function(registrations){
-    for(let r of registrations){ r.unregister(); }
-  });
-  window.addEventListener('load', function(){
-    navigator.serviceWorker.register('./sw.js')
-      .then(r=>console.log('[AgriTech] SW ok'))
-      .catch(e=>console.log('[AgriTech] SW skip'));
-  });
-}
 </script>
 </body>
 </html>
