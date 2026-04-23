@@ -394,6 +394,7 @@ textarea{resize:vertical;min-height:72px}
     <span class="nav-label">Recursos</span>
     <button class="nav-btn" onclick="showView('trabajadores')"><span class="icon">👷</span> Trabajadores</button>
     <button class="nav-btn" onclick="showView('liquidaciones')"><span class="icon">🧾</span> Liquidaciones</button>
+    <button class="nav-btn" onclick="showView('asistencia')"><span class="icon">📋</span> Asistencia Diaria</button>
     <button class="nav-btn" onclick="showView('costos')"><span class="icon">💰</span> Costos y Gastos</button>
     <button class="nav-btn" onclick="showView('clima')"><span class="icon">🌦️</span> Clima</button>
 
@@ -993,6 +994,61 @@ textarea{resize:vertical;min-height:72px}
     </div>
   </div>
 
+  <!-- ======== ASISTENCIA DIARIA ======== -->
+  <div class="view" id="view-asistencia">
+    <div class="section-header">
+      <div>
+        <div class="section-title">📋 Asistencia Diaria</div>
+        <div class="section-sub">Control de presencia de trabajadores por día</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="date" id="asist-fecha" onchange="renderAsistencia()" style="padding:8px 12px;font-size:.85rem">
+        <button class="btn btn-secondary btn-sm" onclick="setAsistFechaHoy()">📅 Hoy</button>
+        <button class="btn btn-primary" onclick="guardarAsistencia()">💾 Guardar</button>
+      </div>
+    </div>
+    <div id="asist-resumen" style="margin-bottom:16px"></div>
+    <div class="grid-2" style="margin-bottom:18px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">✅ Presentes</div><div id="asist-count-p" class="badge badge-green">0</div></div>
+        <div class="card-body" style="padding:0"><div id="asist-lista-presentes"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">❌ Ausentes</div><div id="asist-count-a" class="badge badge-red">0</div></div>
+        <div class="card-body" style="padding:0"><div id="asist-lista-ausentes"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">👷 Registro del Día</div></div>
+      <div class="card-body" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Trabajador</th><th>Rol</th><th>Estado</th><th>Hora entrada</th><th>Hora salida</th><th>Notas</th></tr></thead>
+            <tbody id="asist-tabla"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:4px">
+      <div class="card-header">
+        <div class="card-title">📊 Historial de Asistencia</div>
+        <div style="display:flex;gap:8px">
+          <input type="date" id="asist-hist-d" style="padding:6px 10px;font-size:.78rem">
+          <input type="date" id="asist-hist-h" style="padding:6px 10px;font-size:.78rem">
+          <button class="btn btn-secondary btn-sm" onclick="renderHistorialAsistencia()">Ver</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Fecha</th><th>Trabajador</th><th>Estado</th><th>Entrada</th><th>Salida</th><th>Notas</th><th></th></tr></thead>
+            <tbody id="asist-hist-tabla"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ======== EXPORTAR ======== -->
   <div class="view" id="view-exportar">
     <div class="section-header">
@@ -1571,6 +1627,20 @@ textarea{resize:vertical;min-height:72px}
 
 
 <!-- TOAST -->
+<!-- CONFIRM DELETE MODAL -->
+<div class="modal-backdrop" id="modal-confirm-delete" style="z-index:9998">
+  <div class="modal" style="max-width:380px;text-align:center">
+    <div style="font-size:2.5rem;margin-bottom:12px">🗑️</div>
+    <div class="modal-title" style="justify-content:center;margin-bottom:8px">¿Eliminar este registro?</div>
+    <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:20px">Esta acción se puede deshacer inmediatamente después.</p>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-secondary" onclick="closeModal('modal-confirm-delete')" style="min-width:110px">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-delete-btn" style="min-width:110px">Sí, eliminar</button>
+    </div>
+  </div>
+</div>
+
+
 <div id="toast">
   <span id="toast-msg">Guardado</span>
   <button id="toast-undo-btn" onclick="undoDelete()" style="display:none;margin-left:12px;padding:4px 10px;background:var(--amber);color:var(--green-deep);border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:.8rem">↩ Deshacer</button>
@@ -1614,7 +1684,7 @@ function _safeChart(id, cfg) {
 }
 
 // ========== DATA ==========
-const KEYS = ['cosechas','insumos','inventario','trabajadores','jornadas','costos','clima','eventos','animales','sanidad','reproduccion','especies','creditos','cuotas','proyecciones','presupuestos','presupItems'];
+const KEYS = ['cosechas','insumos','inventario','trabajadores','jornadas','costos','clima','eventos','animales','sanidad','reproduccion','especies','creditos','cuotas','proyecciones','presupuestos','presupItems','asistencia'];
 let db = {};
 
 // Safe storage wrapper - works on file:// and online
@@ -1788,6 +1858,7 @@ function seed(){
     {id:4,fecha:ago(3),cond:'Soleado',   tmin:11,tmax:25,lluvia:0,  viento:10,obs:''},
     {id:5,fecha:ago(4),cond:'Nublado',   tmin:9, tmax:18,lluvia:2,  viento:18,obs:''},
   ]; save('clima');
+  if(!db.asistencia) db.asistencia = [];
   if(!db.eventos.length){
     const fut=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];};
     db.eventos=[
@@ -1800,7 +1871,7 @@ function seed(){
 }
 
 // ========== NAV ==========
-const VIEW_TITLES={dashboard:'Dashboard',cosechas:'Cosechas',insumos:'Insumos Líquidos',inventario:'Inventario',trabajadores:'Trabajadores',liquidaciones:'Liquidaciones de Pago',costos:'Costos y Gastos',clima:'Condiciones Climáticas',calendario:'Calendario Agrícola',alertas:'Centro de Alertas',reportes:'Análisis Avanzado',exportar:'Exportar / PDF',ganado:'Gestión de Animales',sanidad:'Sanidad Animal',reproduccion:'Reproducción y Partos',creditos:'Créditos vs Producción',presupuesto:'Presupuesto Productivo'};
+const VIEW_TITLES={dashboard:'Dashboard',cosechas:'Cosechas',insumos:'Insumos Líquidos',inventario:'Inventario',trabajadores:'Trabajadores',liquidaciones:'Liquidaciones de Pago',costos:'Costos y Gastos',clima:'Condiciones Climáticas',calendario:'Calendario Agrícola',alertas:'Centro de Alertas',reportes:'Análisis Avanzado',exportar:'Exportar / PDF',asistencia:'Asistencia Diaria',ganado:'Gestión de Animales',sanidad:'Sanidad Animal',reproduccion:'Reproducción y Partos',creditos:'Créditos vs Producción',presupuesto:'Presupuesto Productivo'};
 
 function showView(id){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -1808,7 +1879,7 @@ function showView(id){
   document.getElementById('view-'+id).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b=>{ if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+id+"'")) b.classList.add('active'); });
   document.getElementById('pageTitle').textContent = VIEW_TITLES[id]||id;
-  const renders={dashboard:renderDashboard,cosechas:renderCosechas,insumos:renderInsumos,inventario:renderInventario,trabajadores:renderTrabajadores,liquidaciones:renderLiquidaciones,costos:renderCostos,clima:renderClima,calendario:renderCalendario,alertas:renderAlertas,reportes:renderReportes,exportar:renderExport,ganado:renderGanado,sanidad:renderSanidad,reproduccion:renderReproduccion,creditos:renderCreditos,presupuesto:renderPresupuesto};
+  const renders={dashboard:renderDashboard,asistencia:renderAsistencia,cosechas:renderCosechas,insumos:renderInsumos,inventario:renderInventario,trabajadores:renderTrabajadores,liquidaciones:renderLiquidaciones,costos:renderCostos,clima:renderClima,calendario:renderCalendario,alertas:renderAlertas,reportes:renderReportes,exportar:renderExport,ganado:renderGanado,sanidad:renderSanidad,reproduccion:renderReproduccion,creditos:renderCreditos,presupuesto:renderPresupuesto};
   if(renders[id]) renders[id]();
   closeSidebar();
 }
@@ -2297,17 +2368,32 @@ function saveEvento(){
 var _undoStack = []; // Stack de acciones deshacer
 
 function del(key, id, refresh){
-  if(!confirm('¿Eliminar?')) return;
-  // Guardar copia del elemento antes de borrar
-  var item = db[key].find(x => x.id === id);
-  if(item){
-    _undoStack.push({ key: key, item: JSON.parse(JSON.stringify(item)), refresh: refresh });
-    if(_undoStack.length > 20) _undoStack.shift(); // máximo 20 items
+  // Usar modal personalizado en vez de confirm() del navegador
+  var modal = document.getElementById('modal-confirm-delete');
+  var btn = document.getElementById('confirm-delete-btn');
+  if(modal && btn){
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.classList.add('open');
+    // Remove previous listener
+    var newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    newBtn.addEventListener('click', function(){
+      modal.classList.remove('open');
+      modal.style.display = 'none';
+      // Guardar copia para undo
+      var item = db[key].find(x => x.id === id);
+      if(item){
+        _undoStack.push({ key: key, item: JSON.parse(JSON.stringify(item)), refresh: refresh });
+        if(_undoStack.length > 20) _undoStack.shift();
+      }
+      db[key] = db[key].filter(x => x.id !== id);
+      save(key);
+      refresh();
+      toastUndo('🗑️ Eliminado — ');
+    });
   }
-  db[key] = db[key].filter(x => x.id !== id);
-  save(key);
-  refresh();
-  toastUndo('🗑️ Eliminado');
 }
 
 function undoDelete(){
@@ -4025,6 +4111,115 @@ function exportPresupCSV(){
   toast('📥 CSV descargado');
 }
 
+// ========== ASISTENCIA DIARIA ==========
+function setAsistFechaHoy(){
+  document.getElementById('asist-fecha').value = today();
+  renderAsistencia();
+}
+
+function getAsistenciaDelDia(fecha){
+  return db.asistencia.filter(function(a){ return a.fecha === fecha; });
+}
+
+function renderAsistencia(){
+  var fecha = document.getElementById('asist-fecha').value;
+  if(!fecha){
+    document.getElementById('asist-tabla').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">Selecciona una fecha</td></tr>';
+    return;
+  }
+  var trabajadores = db.trabajadores.filter(function(w){ return w.estado === 'Activo'; });
+  var registros = getAsistenciaDelDia(fecha);
+  var presentes = 0, ausentes = 0;
+  var listaP = [], listaA = [];
+
+  var rows = trabajadores.map(function(w){
+    var reg = registros.find(function(r){ return r.workerId === w.id; });
+    var estado = reg ? reg.estado : 'pendiente';
+    var entrada = reg ? (reg.entrada || '') : '';
+    var salida = reg ? (reg.salida || '') : '';
+    var notas = reg ? (reg.notas || '') : '';
+    if(estado === 'presente'){ presentes++; listaP.push(w.nombre); }
+    else if(estado === 'ausente'){ ausentes++; listaA.push(w.nombre); }
+    return '<tr>' +
+      '<td><strong>' + w.nombre + '</strong></td>' +
+      '<td>' + w.rol + '</td>' +
+      '<td><select class="asist-select" data-fecha="' + fecha + '" data-worker="' + w.id + '" data-campo="estado" style="padding:5px 8px;border-radius:6px;font-size:.82rem;border:1.5px solid var(--border)">' +
+        '<option value="pendiente"' + (estado==='pendiente'?' selected':'') + '>⏳ Pendiente</option>' +
+        '<option value="presente"' + (estado==='presente'?' selected':'') + '>✅ Presente</option>' +
+        '<option value="ausente"'  + (estado==='ausente' ?' selected':'') + '>❌ Ausente</option>' +
+      '</select></td>' +
+      '<td><input type="time" class="asist-input" data-fecha="' + fecha + '" data-worker="' + w.id + '" data-campo="entrada" value="' + entrada + '" style="padding:5px;border-radius:6px;font-size:.82rem;border:1.5px solid var(--border)"></td>' +
+      '<td><input type="time" class="asist-input" data-fecha="' + fecha + '" data-worker="' + w.id + '" data-campo="salida" value="' + salida + '" style="padding:5px;border-radius:6px;font-size:.82rem;border:1.5px solid var(--border)"></td>' +
+      '<td><input type="text" class="asist-input" data-fecha="' + fecha + '" data-worker="' + w.id + '" data-campo="notas" value="' + notas + '" placeholder="Observación..." style="padding:5px 8px;border-radius:6px;font-size:.82rem;border:1.5px solid var(--border);width:140px"></td>' +
+    '</tr>';
+  }).join('');
+
+  var tabla = document.getElementById('asist-tabla');
+  tabla.innerHTML = rows || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">No hay trabajadores activos</td></tr>';
+
+  // Attach event listeners using data attributes
+  tabla.querySelectorAll('.asist-select, .asist-input').forEach(function(el){
+    el.addEventListener('change', function(){
+      updateAsistencia(el.dataset.fecha, parseInt(el.dataset.worker), el.dataset.campo, el.value);
+    });
+  });
+
+  document.getElementById('asist-count-p').textContent = presentes;
+  document.getElementById('asist-count-a').textContent = ausentes;
+  var total = trabajadores.length;
+  document.getElementById('asist-resumen').innerHTML = total > 0 ?
+    '<div class="alert ' + (presentes===total?'alert-success':ausentes>0?'alert-warning':'alert-info') + '">' +
+    '📋 <strong>' + fmtDate(fecha) + '</strong> — ✅ Presentes: <strong>' + presentes + '</strong> · ❌ Ausentes: <strong>' + ausentes + '</strong> · ⏳ Pendientes: <strong>' + (total-presentes-ausentes) + '</strong> de ' + total + ' trabajadores</div>' : '';
+  document.getElementById('asist-lista-presentes').innerHTML = listaP.length ?
+    listaP.map(function(n){ return '<div style="padding:10px 18px;border-bottom:1px solid var(--border);font-size:.85rem">✅ <strong>' + n + '</strong></div>'; }).join('') :
+    '<div style="padding:16px 18px;color:var(--text-muted);font-size:.85rem">Sin presentes registrados</div>';
+  document.getElementById('asist-lista-ausentes').innerHTML = listaA.length ?
+    listaA.map(function(n){ return '<div style="padding:10px 18px;border-bottom:1px solid var(--border);font-size:.85rem">❌ <strong>' + n + '</strong></div>'; }).join('') :
+    '<div style="padding:16px 18px;color:var(--text-muted);font-size:.85rem">Sin ausentes registrados</div>';
+}
+
+function updateAsistencia(fecha, workerId, campo, valor){
+  var idx = db.asistencia.findIndex(function(a){ return a.fecha === fecha && a.workerId === workerId; });
+  if(idx >= 0){
+    db.asistencia[idx][campo] = valor;
+  } else {
+    var rec = { id: genId(db.asistencia), fecha: fecha, workerId: workerId, estado: 'pendiente', entrada: '', salida: '', notas: '' };
+    rec[campo] = valor;
+    db.asistencia.push(rec);
+  }
+  save('asistencia');
+  renderAsistencia();
+}
+
+function guardarAsistencia(){
+  save('asistencia');
+  toast('✅ Asistencia guardada para ' + fmtDate(document.getElementById('asist-fecha').value));
+}
+
+function renderHistorialAsistencia(){
+  var d = document.getElementById('asist-hist-d').value;
+  var h = document.getElementById('asist-hist-h').value;
+  var filt = db.asistencia.filter(function(a){ return inRange(a.fecha, d, h); })
+    .sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
+  
+  var tbody = document.getElementById('asist-hist-tabla');
+  tbody.innerHTML = filt.length ? filt.map(function(a){
+    var w = db.trabajadores.find(function(x){ return x.id === a.workerId; });
+    var estadoBadge = a.estado === 'presente' ? '<span class="badge badge-green">✅ Presente</span>' :
+                      a.estado === 'ausente'  ? '<span class="badge badge-red">❌ Ausente</span>' :
+                                                '<span class="badge badge-gray">⏳ Pendiente</span>';
+    return '<tr>' +
+      '<td>' + fmtDate(a.fecha) + '</td>' +
+      '<td><strong>' + (w ? w.nombre : '—') + '</strong></td>' +
+      '<td>' + estadoBadge + '</td>' +
+      '<td>' + (a.entrada || '—') + '</td>' +
+      '<td>' + (a.salida || '—') + '</td>' +
+      '<td style="font-size:.78rem;color:var(--text-muted)">' + (a.notas || '—') + '</td>' +
+      '<td><button class="btn btn-danger btn-sm asist-del-btn" data-id="' + a.id + '">🗑</button></td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Sin registros en ese período</td></tr>';
+}
+
 // ========== INIT ==========
 function init(){
   console.log('INIT START');
@@ -4038,6 +4233,7 @@ function init(){
   ['c-fecha','i-fecha','inv-fecha','ct-fecha','cl-fecha','ev-fecha','j-fecha',
    'san-fecha','rep-fecha','a-fecha','cred-inicio','cuota-fecha'].forEach(id=>safeSet(id,t));
   
+  safeSet('asist-fecha', t);
   safeSet('liq-d',f(new Date(now.getFullYear(),now.getMonth(),1)));
   safeSet('liq-h',f(new Date(now.getFullYear(),now.getMonth()+1,0)));
   safeSet('cr-d',now.getFullYear()+'-01-01');
