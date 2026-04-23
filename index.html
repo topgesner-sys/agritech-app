@@ -3981,6 +3981,10 @@ if(document.readyState==='loading'){
 
 <script>
 if('serviceWorker' in navigator){
+  // Primero desregistrar SWs viejos que puedan causar conflictos
+  navigator.serviceWorker.getRegistrations().then(function(registrations){
+    for(let r of registrations){ r.unregister(); }
+  });
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('./sw.js')
       .then(r=>console.log('[AgriTech] SW ok'))
