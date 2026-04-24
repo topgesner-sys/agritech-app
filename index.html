@@ -418,6 +418,7 @@ textarea{resize:vertical;min-height:72px}
     <button class="nav-btn" onclick="showView('cosechas')"><span class="icon">🍓</span> Cosechas</button>
     <button class="nav-btn" onclick="showView('insumos')"><span class="icon">🧪</span> Insumos</button>
     <button class="nav-btn" onclick="showView('inventario')"><span class="icon">📦</span> Inventario</button>
+    <button class="nav-btn" onclick="showView('envases')"><span class="icon">🧺</span> Envases</button>
 
     <span class="nav-label">Recursos</span>
     <button class="nav-btn" onclick="showView('trabajadores')"><span class="icon">👷</span> Trabajadores</button>
@@ -1076,6 +1077,99 @@ textarea{resize:vertical;min-height:72px}
           <table>
             <thead><tr><th>Fecha</th><th>Trabajador</th><th>Estado</th><th>Entrada</th><th>Salida</th><th>Notas</th><th></th></tr></thead>
             <tbody id="asist-hist-tabla"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== ENVASES ======== -->
+  <div class="view" id="view-envases">
+    <div class="section-header">
+      <div>
+        <div class="section-title">🧺 Control de Envases</div>
+        <div class="section-sub">BINs y Cajas vacías entregadas y devueltas por comprador</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secondary" onclick="openModal('modal-comprador')">🏢 Compradores</button>
+        <button class="btn btn-primary" onclick="openModal('modal-envase')">＋ Movimiento</button>
+      </div>
+    </div>
+
+    <!-- Resumen por comprador -->
+    <div id="envases-resumen" style="margin-bottom:18px"></div>
+
+    <!-- Stats strip -->
+    <div class="stats-grid" style="margin-bottom:18px" id="envases-stats"></div>
+
+    <!-- Filtros -->
+    <div class="filter-bar">
+      <select id="f-env-comprador" onchange="renderEnvases()" style="min-width:160px">
+        <option value="">Todos los compradores</option>
+      </select>
+      <select id="f-env-tipo" onchange="renderEnvases()">
+        <option value="">Todos los tipos</option>
+        <option value="BIN">BINs</option>
+        <option value="Caja 1ra">Cajas 1ra</option>
+        <option value="Caja 2da">Cajas 2da</option>
+        <option value="Caja General">Cajas General</option>
+      </select>
+      <select id="f-env-mov" onchange="renderEnvases()">
+        <option value="">Todos los movimientos</option>
+        <option value="entrada">📥 Entradas (vacíos recibidos)</option>
+        <option value="salida">📤 Salidas (llenos despachados)</option>
+        <option value="devolucion">↩️ Devoluciones</option>
+      </select>
+      <input type="date" id="f-env-d" onchange="renderEnvases()">
+      <input type="date" id="f-env-h" onchange="renderEnvases()">
+      <button class="btn btn-secondary btn-sm" onclick="clearFEnvases()">✕</button>
+    </div>
+
+    <!-- Tabla de movimientos -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📋 Registro de Movimientos</div>
+        <div id="envases-total-badge"></div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Comprador</th>
+                <th>Tipo Envase</th>
+                <th>Movimiento</th>
+                <th>Cantidad</th>
+                <th>Cosecha asociada</th>
+                <th>Fecha</th>
+                <th>Notas</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tabla-envases"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Balance por comprador -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">⚖️ Balance por Comprador</div></div>
+      <div class="card-body" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Comprador</th>
+                <th>Tipo</th>
+                <th>📥 Recibidos vacíos</th>
+                <th>📤 Despachados llenos</th>
+                <th>↩️ Devueltos</th>
+                <th>⚖️ Balance</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-balance-envases"></tbody>
           </table>
         </div>
       </div>
@@ -1784,6 +1878,89 @@ textarea{resize:vertical;min-height:72px}
 
 
 
+<!-- MODAL: NUEVO MOVIMIENTO ENVASE -->
+<div class="modal-backdrop" id="modal-envase">
+<div class="modal" style="max-width:520px">
+  <div class="modal-title">🧺 Registrar Movimiento de Envases</div>
+  <div class="form-grid">
+    <div class="form-group">
+      <label>Comprador *</label>
+      <select id="env-comprador">
+        <option value="">Seleccionar comprador...</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Tipo de envase *</label>
+      <select id="env-tipo">
+        <option value="BIN">📦 BIN (palta)</option>
+        <option value="Caja 1ra">🧺 Caja 1ra categoría</option>
+        <option value="Caja 2da">📋 Caja 2da categoría</option>
+        <option value="Caja General">📦 Caja General</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Tipo de movimiento *</label>
+      <select id="env-movimiento" onchange="updateEnvaseLabel()">
+        <option value="entrada">📥 Entrada — Vacíos recibidos del comprador</option>
+        <option value="salida">📤 Salida — Llenos despachados al comprador</option>
+        <option value="devolucion">↩️ Devolución — Envases devueltos</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label id="env-cant-label">Cantidad recibida *</label>
+      <input type="number" id="env-cantidad" placeholder="0" min="0">
+    </div>
+    <div class="form-group">
+      <label>Fecha *</label>
+      <input type="date" id="env-fecha">
+    </div>
+    <div class="form-group">
+      <label>Cosecha asociada (opcional)</label>
+      <select id="env-cosecha">
+        <option value="">Sin asociar</option>
+      </select>
+    </div>
+    <div class="form-group full">
+      <label>Notas</label>
+      <textarea id="env-notas" placeholder="Ej: Chofer Juan, patente AB1234, guía N°123..."></textarea>
+    </div>
+  </div>
+  <div id="env-preview" style="display:none;padding:10px 14px;background:#f0faf4;border-radius:8px;margin-top:8px;font-size:.85rem;border:1px solid var(--border)"></div>
+  <div class="form-actions">
+    <button class="btn btn-secondary" onclick="closeModal('modal-envase')">Cancelar</button>
+    <button class="btn btn-primary" onclick="saveEnvase()">💾 Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL: COMPRADORES -->
+<div class="modal-backdrop" id="modal-comprador">
+<div class="modal" style="max-width:480px">
+  <div class="modal-title">🏢 Gestión de Compradores</div>
+  <div id="compradores-lista" style="margin-bottom:16px"></div>
+  <div style="padding:14px;background:#f0faf4;border-radius:10px;border:1px solid var(--border)">
+    <div style="font-weight:700;font-size:.85rem;color:var(--green-deep);margin-bottom:10px">➕ Agregar comprador</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Nombre empresa *</label><input type="text" id="comp-nombre" placeholder="Ej: Frutas del Sur S.A."></div>
+      <div class="form-group"><label>RUT empresa</label><input type="text" id="comp-rut" placeholder="76.123.456-7"></div>
+      <div class="form-group"><label>Contacto</label><input type="text" id="comp-contacto" placeholder="Nombre del contacto"></div>
+      <div class="form-group"><label>Teléfono</label><input type="text" id="comp-tel" placeholder="+56 9 1234 5678"></div>
+      <div class="form-group full"><label>Productos que compra</label>
+        <select id="comp-producto">
+          <option value="Palta">🥑 Palta</option>
+          <option value="Frutilla">🍓 Frutilla</option>
+          <option value="Ambos">🥑🍓 Ambos</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px">
+      <button class="btn btn-primary" onclick="saveComprador()">💾 Agregar</button>
+    </div>
+  </div>
+  <div class="form-actions"><button class="btn btn-secondary" onclick="closeModal('modal-comprador')">Cerrar</button></div>
+</div>
+</div>
+
 <!-- QUICK ADD -->
 <div class="modal-backdrop" id="modal-quick">
 <div class="modal" style="max-width:400px">
@@ -1880,7 +2057,7 @@ async function loadFromCloud(){
 var _originalSave = null; // will be set after save() is defined
 
 // ========== DATA ==========
-const KEYS = ['cosechas','insumos','inventario','trabajadores','jornadas','costos','clima','eventos','animales','sanidad','reproduccion','especies','creditos','cuotas','proyecciones','presupuestos','presupItems','asistencia'];
+const KEYS = ['cosechas','insumos','inventario','trabajadores','jornadas','costos','clima','eventos','animales','sanidad','reproduccion','especies','creditos','cuotas','proyecciones','presupuestos','presupItems','asistencia','envases','compradores'];
 let db = {};
 
 // Safe storage wrapper - works on file:// and online
@@ -2054,6 +2231,8 @@ function seed(){
     {id:4,fecha:ago(3),cond:'Soleado',   tmin:11,tmax:25,lluvia:0,  viento:10,obs:''},
     {id:5,fecha:ago(4),cond:'Nublado',   tmin:9, tmax:18,lluvia:2,  viento:18,obs:''},
   ]; save('clima');
+  if(!db.compradores) db.compradores = [];
+  if(!db.envases) db.envases = [];
   if(!db.asistencia) db.asistencia = [];
   if(!db.eventos.length){
     const fut=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];};
@@ -2067,7 +2246,7 @@ function seed(){
 }
 
 // ========== NAV ==========
-const VIEW_TITLES={dashboard:'Dashboard',cosechas:'Cosechas',insumos:'Insumos Líquidos',inventario:'Inventario',trabajadores:'Trabajadores',liquidaciones:'Liquidaciones de Pago',costos:'Costos y Gastos',clima:'Condiciones Climáticas',calendario:'Calendario Agrícola',alertas:'Centro de Alertas',reportes:'Análisis Avanzado',exportar:'Exportar / PDF',asistencia:'Asistencia Diaria',ganado:'Gestión de Animales',sanidad:'Sanidad Animal',reproduccion:'Reproducción y Partos',creditos:'Créditos vs Producción',presupuesto:'Presupuesto Productivo'};
+const VIEW_TITLES={dashboard:'Dashboard',cosechas:'Cosechas',insumos:'Insumos Líquidos',inventario:'Inventario',trabajadores:'Trabajadores',liquidaciones:'Liquidaciones de Pago',costos:'Costos y Gastos',clima:'Condiciones Climáticas',calendario:'Calendario Agrícola',alertas:'Centro de Alertas',reportes:'Análisis Avanzado',exportar:'Exportar / PDF',envases:'Control de Envases',asistencia:'Asistencia Diaria',ganado:'Gestión de Animales',sanidad:'Sanidad Animal',reproduccion:'Reproducción y Partos',creditos:'Créditos vs Producción',presupuesto:'Presupuesto Productivo'};
 
 function showView(id){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -2075,7 +2254,7 @@ function showView(id){
   document.getElementById('view-'+id).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b=>{ if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+id+"'")) b.classList.add('active'); });
   document.getElementById('pageTitle').textContent = VIEW_TITLES[id]||id;
-  const renders={dashboard:renderDashboard,asistencia:renderAsistencia,cosechas:renderCosechas,insumos:renderInsumos,inventario:renderInventario,trabajadores:renderTrabajadores,liquidaciones:renderLiquidaciones,costos:renderCostos,clima:renderClima,calendario:renderCalendario,alertas:renderAlertas,reportes:renderReportes,exportar:renderExport,ganado:renderGanado,sanidad:renderSanidad,reproduccion:renderReproduccion,creditos:renderCreditos,presupuesto:renderPresupuesto};
+  const renders={dashboard:renderDashboard,asistencia:renderAsistencia,envases:renderEnvases,cosechas:renderCosechas,insumos:renderInsumos,inventario:renderInventario,trabajadores:renderTrabajadores,liquidaciones:renderLiquidaciones,costos:renderCostos,clima:renderClima,calendario:renderCalendario,alertas:renderAlertas,reportes:renderReportes,exportar:renderExport,ganado:renderGanado,sanidad:renderSanidad,reproduccion:renderReproduccion,creditos:renderCreditos,presupuesto:renderPresupuesto};
   if(renders[id]) renders[id]();
   closeSidebar();
 }
@@ -4666,6 +4845,219 @@ function revocarAcceso(uid, nombre){
   }).catch(function(e){ toast('Error: '+e.message); });
 }
 
+// ========== ENVASES & COMPRADORES ==========
+
+function updateEnvaseLabel(){
+  var mov = document.getElementById('env-movimiento').value;
+  var lbl = document.getElementById('env-cant-label');
+  if(lbl){
+    lbl.textContent = mov === 'entrada' ? 'Cantidad recibida (vacíos) *' :
+                      mov === 'salida'  ? 'Cantidad despachada (llenos) *' :
+                                         'Cantidad devuelta *';
+  }
+}
+
+function populateEnvaseSelects(){
+  // Populate comprador selects
+  var opts = '<option value="">Seleccionar comprador...</option>' +
+    db.compradores.map(function(c){ return '<option value="'+c.id+'">'+c.nombre+'</option>'; }).join('');
+  ['env-comprador','f-env-comprador'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el){
+      var val = el.value;
+      el.innerHTML = id === 'f-env-comprador' ? 
+        '<option value="">Todos los compradores</option>' + db.compradores.map(function(c){ return '<option value="'+c.id+'">'+c.nombre+'</option>'; }).join('') :
+        opts;
+      el.value = val;
+    }
+  });
+  // Populate cosecha select
+  var cosOpts = '<option value="">Sin asociar</option>' +
+    [...db.cosechas].sort(function(a,b){ return b.fecha.localeCompare(a.fecha); })
+    .slice(0,30)
+    .map(function(c){ return '<option value="'+c.id+'">'+c.tipo+' — '+fmtDate(c.fecha)+' ('+c.sector+')</option>'; }).join('');
+  var cosEl = document.getElementById('env-cosecha');
+  if(cosEl) cosEl.innerHTML = cosOpts;
+}
+
+function saveComprador(){
+  var nom = document.getElementById('comp-nombre').value.trim();
+  if(!nom){ toast('⚠️ Nombre requerido'); return; }
+  db.compradores.push({
+    id: genId(db.compradores),
+    nombre: nom,
+    rut: document.getElementById('comp-rut').value,
+    contacto: document.getElementById('comp-contacto').value,
+    tel: document.getElementById('comp-tel').value,
+    producto: document.getElementById('comp-producto').value,
+    activo: true
+  });
+  save('compradores');
+  ['comp-nombre','comp-rut','comp-contacto','comp-tel'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  toast('✅ Comprador agregado');
+  renderCompradoresList();
+  populateEnvaseSelects();
+}
+
+function renderCompradoresList(){
+  var el = document.getElementById('compradores-lista');
+  if(!el) return;
+  if(!db.compradores.length){
+    el.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem">No hay compradores registrados.</p>';
+    return;
+  }
+  el.innerHTML = db.compradores.map(function(c){
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#f9f9f9;border-radius:8px;margin-bottom:6px;border:1px solid var(--border)">' +
+      '<div><div style="font-weight:700;font-size:.88rem;color:var(--green-deep)">'+c.nombre+'</div>' +
+      '<div style="font-size:.73rem;color:var(--text-muted)">'+(c.rut||'')+(c.contacto?' · '+c.contacto:'')+(c.tel?' · '+c.tel:'')+'</div></div>' +
+      '<div style="display:flex;gap:6px;align-items:center">'+badge(c.producto||'Palta')+'<button class="btn btn-danger btn-sm comp-del-btn" data-id="'+c.id+'">🗑</button></div>' +
+    '</div>';
+  }).join('');
+  // Attach delete buttons
+  el.querySelectorAll('.comp-del-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      del('compradores', parseInt(btn.dataset.id), function(){ renderCompradoresList(); populateEnvaseSelects(); renderEnvases(); });
+    });
+  });
+}
+
+function saveEnvase(){
+  var compId = parseInt(document.getElementById('env-comprador').value);
+  var tipo = document.getElementById('env-tipo').value;
+  var mov = document.getElementById('env-movimiento').value;
+  var cant = parseInt(document.getElementById('env-cantidad').value) || 0;
+  var fecha = document.getElementById('env-fecha').value;
+  if(!compId || !cant || !fecha){ toast('⚠️ Completa comprador, cantidad y fecha'); return; }
+  
+  db.envases.push({
+    id: genId(db.envases),
+    compradorId: compId,
+    tipo: tipo,
+    movimiento: mov,
+    cantidad: cant,
+    cosechaId: parseInt(document.getElementById('env-cosecha').value) || 0,
+    fecha: fecha,
+    notas: document.getElementById('env-notas').value
+  });
+  save('envases');
+  closeModal('modal-envase');
+  ['env-cantidad','env-notas'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  
+  var comp = db.compradores.find(function(c){ return c.id === compId; });
+  var movLabel = mov === 'entrada' ? 'Entrada de vacíos' : mov === 'salida' ? 'Despacho de llenos' : 'Devolución';
+  toast('✅ '+movLabel+' registrado — '+cant+' '+tipo+'s');
+  addAlerta('info', '🧺 '+movLabel+': '+cant+' '+tipo+'s de '+(comp?comp.nombre:'comprador'));
+  renderEnvases();
+  renderDashboard();
+}
+
+function clearFEnvases(){
+  ['f-env-comprador','f-env-tipo','f-env-mov','f-env-d','f-env-h'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  renderEnvases();
+}
+
+function renderEnvases(){
+  populateEnvaseSelects();
+  renderCompradoresList();
+
+  var fComp = document.getElementById('f-env-comprador') ? document.getElementById('f-env-comprador').value : '';
+  var fTipo = document.getElementById('f-env-tipo') ? document.getElementById('f-env-tipo').value : '';
+  var fMov  = document.getElementById('f-env-mov') ? document.getElementById('f-env-mov').value : '';
+  var fD    = document.getElementById('f-env-d') ? document.getElementById('f-env-d').value : '';
+  var fH    = document.getElementById('f-env-h') ? document.getElementById('f-env-h').value : '';
+
+  var filt = db.envases.filter(function(e){
+    if(fComp && e.compradorId !== parseInt(fComp)) return false;
+    if(fTipo && e.tipo !== fTipo) return false;
+    if(fMov  && e.movimiento !== fMov) return false;
+    if(!inRange(e.fecha, fD, fH)) return false;
+    return true;
+  }).sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
+
+  // Stats
+  var totalEntradas = db.envases.filter(function(e){ return e.movimiento==='entrada'; }).reduce(function(s,e){ return s+e.cantidad; }, 0);
+  var totalSalidas  = db.envases.filter(function(e){ return e.movimiento==='salida'; }).reduce(function(s,e){ return s+e.cantidad; }, 0);
+  var totalDevoluc  = db.envases.filter(function(e){ return e.movimiento==='devolucion'; }).reduce(function(s,e){ return s+e.cantidad; }, 0);
+  var totalBINs     = db.envases.filter(function(e){ return e.tipo==='BIN'&&e.movimiento==='entrada'; }).reduce(function(s,e){ return s+e.cantidad; }, 0);
+  var totalCajas    = db.envases.filter(function(e){ return e.tipo!=='BIN'&&e.movimiento==='entrada'; }).reduce(function(s,e){ return s+e.cantidad; }, 0);
+
+  var statsEl = document.getElementById('envases-stats');
+  if(statsEl) statsEl.innerHTML = [
+    ['📥','Vacíos recibidos',totalEntradas,'unidades','var(--green-mid)'],
+    ['📤','Despachados llenos',totalSalidas,'unidades','var(--blue)'],
+    ['↩️','Devueltos',totalDevoluc,'unidades','var(--amber)'],
+    ['📦','BINs recibidos',totalBINs,'BINs','#1b6e3a'],
+    ['🧺','Cajas recibidas',totalCajas,'cajas','var(--amber-dark)'],
+    ['⚖️','Balance neto',totalEntradas-totalSalidas,'disponibles',totalEntradas-totalSalidas>=0?'var(--green-mid)':'var(--red-soft)'],
+  ].map(function(s){ return '<div class="stat-card" style="--accent:'+s[4]+'"><div class="stat-icon">'+s[0]+'</div><div class="stat-label">'+s[1]+'</div><div class="stat-value" style="font-size:1.5rem">'+s[2].toLocaleString()+'</div><div class="stat-unit">'+s[3]+'</div></div>'; }).join('');
+
+  // Movement table
+  var movLabels = { entrada:'📥 Entrada vacíos', salida:'📤 Despacho llenos', devolucion:'↩️ Devolución' };
+  var movBadges = { entrada:'badge-green', salida:'badge-blue', devolucion:'badge-amber' };
+
+  var tbody = document.getElementById('tabla-envases');
+  if(tbody) tbody.innerHTML = filt.length ? filt.map(function(e){
+    var comp = db.compradores.find(function(c){ return c.id===e.compradorId; });
+    var cos  = db.cosechas.find(function(c){ return c.id===e.cosechaId; });
+    return '<tr>' +
+      '<td><strong>'+(comp?comp.nombre:'—')+'</strong></td>' +
+      '<td>'+badge(e.tipo)+'</td>' +
+      '<td><span class="badge '+movBadges[e.movimiento]+'">'+(movLabels[e.movimiento]||e.movimiento)+'</span></td>' +
+      '<td><span class="mono" style="font-weight:700;font-size:1rem">'+e.cantidad.toLocaleString()+'</span></td>' +
+      '<td style="font-size:.78rem">'+(cos?cos.tipo+' '+fmtDate(cos.fecha):'—')+'</td>' +
+      '<td><span class="mono">'+fmtDate(e.fecha)+'</span></td>' +
+      '<td style="font-size:.78rem;color:var(--text-muted)">'+(e.notas||'—')+'</td>' +
+      '<td><button class="btn btn-danger btn-sm env-del-btn" data-id="'+e.id+'">🗑</button></td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">🧺 Sin movimientos registrados</td></tr>';
+
+  // Attach delete buttons
+  if(tbody) tbody.querySelectorAll('.env-del-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      del('envases', parseInt(btn.dataset.id), renderEnvases);
+    });
+  });
+
+  // Balance table per comprador
+  var balanceEl = document.getElementById('tabla-balance-envases');
+  if(balanceEl){
+    var tipos = ['BIN','Caja 1ra','Caja 2da','Caja General'];
+    var rows = [];
+    db.compradores.forEach(function(comp){
+      tipos.forEach(function(tipo){
+        var movs = db.envases.filter(function(e){ return e.compradorId===comp.id && e.tipo===tipo; });
+        if(!movs.length) return;
+        var entrada = movs.filter(function(e){ return e.movimiento==='entrada'; }).reduce(function(s,e){ return s+e.cantidad; },0);
+        var salida  = movs.filter(function(e){ return e.movimiento==='salida'; }).reduce(function(s,e){ return s+e.cantidad; },0);
+        var devol   = movs.filter(function(e){ return e.movimiento==='devolucion'; }).reduce(function(s,e){ return s+e.cantidad; },0);
+        var balance = entrada - salida + devol;
+        var statusBadge = balance > 0 ? badge('✅ Con saldo','badge-green') : 
+                          balance < 0 ? badge('⚠️ Debe devolver','badge-red') : 
+                          badge('⚖️ Balanceado','badge-gray');
+        rows.push('<tr>'+
+          '<td><strong>'+comp.nombre+'</strong></td>'+
+          '<td>'+badge(tipo)+'</td>'+
+          '<td><span class="mono">'+entrada+'</span></td>'+
+          '<td><span class="mono">'+salida+'</span></td>'+
+          '<td><span class="mono">'+devol+'</span></td>'+
+          '<td><span class="mono" style="font-weight:700;color:'+(balance>=0?'var(--green-mid)':'var(--red-soft)')+'">'+balance+'</span></td>'+
+          '<td>'+statusBadge+'</td>'+
+        '</tr>');
+      });
+    });
+    balanceEl.innerHTML = rows.length ? rows.join('') : 
+      '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Sin movimientos de envases aún</td></tr>';
+  }
+
+  // Total badge
+  var totalEl = document.getElementById('envases-total-badge');
+  if(totalEl) totalEl.innerHTML = badge(filt.length+' registros','badge-green');
+}
+
 // ========== INIT ==========
 function init(){
   console.log('INIT START');
@@ -4680,6 +5072,7 @@ function init(){
    'san-fecha','rep-fecha','a-fecha','cred-inicio','cuota-fecha'].forEach(id=>safeSet(id,t));
   
   safeSet('asist-fecha', t);
+  safeSet('env-fecha', t);
   safeSet('liq-d',f(new Date(now.getFullYear(),now.getMonth(),1)));
   safeSet('liq-h',f(new Date(now.getFullYear(),now.getMonth()+1,0)));
   safeSet('cr-d',now.getFullYear()+'-01-01');
