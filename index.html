@@ -1332,7 +1332,7 @@ textarea{resize:vertical;min-height:72px}
 <div class="modal" style="max-width:720px">
   <div class="modal-title">⏱️ Registrar Trabajo del Día</div>
   <div class="form-grid">
-    <div class="form-group"><label>Trabajador *</label><select id="j-worker" onchange="calcJornal()"><option value="">Seleccionar...</option></select></div>
+    <div class="form-group"><label>Trabajador *</label><select id="j-worker" onchange="prefillJornadaPrices();calcJornal()"><option value="">Seleccionar...</option></select></div>
     <div class="form-group"><label>Fecha *</label><input type="date" id="j-fecha"></div>
     <div class="form-group full"><label>Sector / Parcela</label><input type="text" id="j-sector" placeholder="Ej: Sector A"></div>
   </div>
@@ -1345,34 +1345,118 @@ textarea{resize:vertical;min-height:72px}
 
   <!-- DESTAJO -->
   <div id="jpanel-destajo">
-    <div style="font-size:.76rem;color:var(--text-muted);margin-bottom:10px">Completa solo lo que cosechó hoy. Se calcula con las tarifas del trabajador.</div>
-    <div class="form-grid cols-3">
-      <div class="form-group"><label>🥑 Palta — BINs</label><input type="number" id="j-palta-bins" placeholder="0" min="0" step="1" oninput="calcJornal()"></div>
-      <div class="form-group"><label>🥑 Palta — kg</label><input type="number" id="j-palta-kg" placeholder="0" min="0" step="0.1" oninput="calcJornal()"></div>
-      <div class="form-group"></div>
-      <div class="form-group"><label>🍓 Frutilla — Caja 1ra</label><input type="number" id="j-frut-c1" placeholder="0" min="0" step="1" oninput="calcJornal()"></div>
-      <div class="form-group"><label>🍓 Frutilla — Caja 2da</label><input type="number" id="j-frut-c2" placeholder="0" min="0" step="1" oninput="calcJornal()"></div>
-      <div class="form-group"><label>🍓 Frutilla — kg</label><input type="number" id="j-frut-kg" placeholder="0" min="0" step="0.1" oninput="calcJornal()"></div>
+    <div style="font-size:.76rem;color:var(--text-muted);margin-bottom:10px">
+      Ingresa la cantidad producida y el precio a pagar. Los precios se pre-llenan desde las tarifas del trabajador pero puedes cambiarlos.
+    </div>
+    <!-- PALTA -->
+    <div style="background:#f0faf4;border-radius:8px;padding:12px;margin-bottom:10px;border:1px solid var(--border)">
+      <div style="font-weight:700;font-size:.82rem;color:var(--green-deep);margin-bottom:8px">🥑 Palta</div>
+      <div class="form-grid cols-3">
+        <div class="form-group">
+          <label>Cantidad BINs</label>
+          <input type="number" id="j-palta-bins" placeholder="0" min="0" step="1" oninput="calcJornal()">
+        </div>
+        <div class="form-group">
+          <label>Precio por BIN ($)</label>
+          <input type="number" id="j-precio-bin" placeholder="0" min="0" step="1" oninput="calcJornal()">
+        </div>
+        <div class="form-group">
+          <label>Subtotal BINs</label>
+          <input type="text" id="j-sub-bins" readonly style="background:#e8f5e9;font-weight:700;color:var(--green-deep)">
+        </div>
+        <div class="form-group">
+          <label>Cantidad kg palta</label>
+          <input type="number" id="j-palta-kg" placeholder="0" min="0" step="0.1" oninput="calcJornal()">
+        </div>
+        <div class="form-group">
+          <label>Precio por kg ($)</label>
+          <input type="number" id="j-precio-palta-kg" placeholder="0" min="0" step="1" oninput="calcJornal()">
+        </div>
+        <div class="form-group">
+          <label>Subtotal kg palta</label>
+          <input type="text" id="j-sub-palta-kg" readonly style="background:#e8f5e9;font-weight:700;color:var(--green-deep)">
+        </div>
+      </div>
+    </div>
+    <!-- FRUTILLA -->
+    <div style="background:#fff8f0;border-radius:8px;padding:12px;border:1px solid var(--border)">
+      <div style="font-weight:700;font-size:.82rem;color:var(--amber-dark);margin-bottom:8px">🍓 Frutilla</div>
+      <div class="form-grid cols-3">
+        <div class="form-group">
+          <label>Cajas 1ra categoría</label>
+          <input type="number" id="j-frut-c1" placeholder="0" min="0" step="1" oninput="calcJornal()">
+        </div>
+        <div class="form-group">
+          <label>Precio por caja 1ra ($)</label>
+          <input type="number" id="j-precio-c1" placeholder="0" min="0" step="1" oninput="calcJornal()">
+        </div>
+        <div class="form-group">
+          <label>Subtotal 1ra</label>
+          <input type="text" id="j-sub-c1" readonly style="background:#fff3e0;font-weight:700;color:var(--amber-dark)">
+        </div>
+        <div class="form-group">
+          <label>Cajas 2da categoría</label>
+          <input type="number" id="j-frut-c2" placeholder="0" min="0" step="1" oninput="calcJornal()">
+        </div>
+        <div class="form-group">
+          <label>Precio por caja 2da ($)</label>
+          <input type="number" id="j-precio-c2" placeholder="0" min="0" step="1" oninput="calcJornal()">
+        </div>
+        <div class="form-group">
+          <label>Subtotal 2da</label>
+          <input type="text" id="j-sub-c2" readonly style="background:#fff3e0;font-weight:700;color:var(--amber-dark)">
+        </div>
+        <div class="form-group">
+          <label>kg frutilla</label>
+          <input type="number" id="j-frut-kg" placeholder="0" min="0" step="0.1" oninput="calcJornal()">
+        </div>
+        <div class="form-group">
+          <label>Precio por kg ($)</label>
+          <input type="number" id="j-precio-frut-kg" placeholder="0" min="0" step="1" oninput="calcJornal()">
+        </div>
+        <div class="form-group">
+          <label>Subtotal kg frut.</label>
+          <input type="text" id="j-sub-frut-kg" readonly style="background:#fff3e0;font-weight:700;color:var(--amber-dark)">
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- JORNAL -->
   <div id="jpanel-jornal" style="display:none">
-    <div style="font-size:.76rem;color:var(--text-muted);margin-bottom:10px">Para trabajos pagados por tiempo (no por producción).</div>
-    <div class="form-grid">
-      <div class="form-group"><label>Modalidad</label>
-        <select id="j-modalidad" onchange="calcJornal()">
-          <option value="hora">Por hora</option><option value="dia">Día completo</option>
-        </select>
+    <div style="font-size:.76rem;color:var(--text-muted);margin-bottom:10px">Para trabajos pagados por tiempo. Ingresa el precio directamente.</div>
+    <div style="background:#f0faf4;border-radius:8px;padding:12px;border:1px solid var(--border)">
+      <div class="form-grid cols-3">
+        <div class="form-group">
+          <label>Modalidad</label>
+          <select id="j-modalidad" onchange="calcJornal()">
+            <option value="hora">⏱️ Por hora</option>
+            <option value="dia">📅 Día completo</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Horas trabajadas</label>
+          <input type="number" id="j-horas" placeholder="8" min="0" step="0.5" oninput="calcJornal()">
+        </div>
+        <div class="form-group">
+          <label id="j-precio-tiempo-label">Precio por hora ($)</label>
+          <input type="number" id="j-precio-hora" placeholder="0" min="0" step="1" oninput="calcJornal()">
+        </div>
       </div>
-      <div class="form-group"><label>Horas trabajadas</label><input type="number" id="j-horas" placeholder="8" min="0" step="0.5" oninput="calcJornal()"></div>
-      <div class="form-group full"><label>Tarea realizada</label>
-        <select id="j-tarea">
-          <option>Cosecha</option><option>Poda</option><option>Riego</option>
-          <option>Aplicación insumos</option><option>Embalaje</option><option>Limpieza</option>
-          <option>Supervisión</option><option>Mantención</option>
-          <option>Ganadería / cuidado animales</option><option>Otro</option>
-        </select>
+      <div class="form-grid" style="margin-top:6px">
+        <div class="form-group">
+          <label>Tarea realizada</label>
+          <select id="j-tarea">
+            <option>Cosecha</option><option>Poda</option><option>Riego</option>
+            <option>Aplicación insumos</option><option>Embalaje</option><option>Limpieza</option>
+            <option>Supervisión</option><option>Mantención</option>
+            <option>Ganadería / cuidado animales</option><option>Otro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Total jornal</label>
+          <input type="text" id="j-sub-jornal" readonly style="background:#e8f5e9;font-weight:700;font-size:1rem;color:var(--green-deep)">
+        </div>
       </div>
     </div>
   </div>
@@ -2449,266 +2533,158 @@ function calcJornadaPago(worker, data){
   return {items,total};
 }
 
-function calcJornal(){
-  const wid=parseInt(document.getElementById('j-worker').value);
-  const w=db.trabajadores.find(x=>x.id===wid);
-  const data={
-    modo:jornadaMode,
-    paltaBins:parseFloat(document.getElementById('j-palta-bins').value)||0,
-    paltaKg:parseFloat(document.getElementById('j-palta-kg').value)||0,
-    frutC1:parseFloat(document.getElementById('j-frut-c1').value)||0,
-    frutC2:parseFloat(document.getElementById('j-frut-c2').value)||0,
-    frutKg:parseFloat(document.getElementById('j-frut-kg').value)||0,
-    horas:parseFloat(document.getElementById('j-horas').value)||0,
-    modalidad:document.getElementById('j-modalidad').value||'hora',
+function prefillJornadaPrices(){
+  var wid = parseInt(document.getElementById('j-worker').value);
+  var w = db.trabajadores.find(function(x){ return x.id===wid; });
+  if(!w) return;
+  // Pre-fill prices from worker tariffs (user can override)
+  var setIfEmpty = function(id, val){
+    var el = document.getElementById(id);
+    if(el && (!el.value || el.value==='0') && val>0) el.value = val;
   };
-  const r=calcJornadaPago(w,data);
-  const bdEl=document.getElementById('j-breakdown');
-  if(r.items.length===0){ bdEl.style.display='none'; return; }
-  bdEl.style.display='';
-  document.getElementById('j-breakdown-items').innerHTML=r.items.map(it=>`<div style="display:flex;justify-content:space-between;padding:3px 0"><span>${it.label}</span><strong style="font-family:var(--font-m)">${fmtMoney(it.amount)}</strong></div>`).join('');
-  document.getElementById('j-breakdown-total').textContent=fmtMoney(r.total);
+  setIfEmpty('j-precio-bin', w.tPaltaBin||0);
+  setIfEmpty('j-precio-palta-kg', w.tPaltaKg||0);
+  setIfEmpty('j-precio-c1', w.tFrutC1||0);
+  setIfEmpty('j-precio-c2', w.tFrutC2||0);
+  setIfEmpty('j-precio-frut-kg', w.tFrutKg||0);
+  setIfEmpty('j-precio-hora', w.tarifa||0);
+}
+
+function calcJornal(){
+  var wid = parseInt(document.getElementById('j-worker').value);
+  var w = db.trabajadores.find(function(x){ return x.id===wid; });
+
+  // Get manual prices from fields
+  var precioBin     = parseFloat(document.getElementById('j-precio-bin') ? document.getElementById('j-precio-bin').value : 0) || 0;
+  var precioPaltaKg = parseFloat(document.getElementById('j-precio-palta-kg') ? document.getElementById('j-precio-palta-kg').value : 0) || 0;
+  var precioC1      = parseFloat(document.getElementById('j-precio-c1') ? document.getElementById('j-precio-c1').value : 0) || 0;
+  var precioC2      = parseFloat(document.getElementById('j-precio-c2') ? document.getElementById('j-precio-c2').value : 0) || 0;
+  var precioFrutKg  = parseFloat(document.getElementById('j-precio-frut-kg') ? document.getElementById('j-precio-frut-kg').value : 0) || 0;
+  var precioHora    = parseFloat(document.getElementById('j-precio-hora') ? document.getElementById('j-precio-hora').value : 0) || 0;
+
+  // Quantities
+  var paltaBins = parseFloat(document.getElementById('j-palta-bins').value)||0;
+  var paltaKg   = parseFloat(document.getElementById('j-palta-kg').value)||0;
+  var frutC1    = parseFloat(document.getElementById('j-frut-c1').value)||0;
+  var frutC2    = parseFloat(document.getElementById('j-frut-c2').value)||0;
+  var frutKg    = parseFloat(document.getElementById('j-frut-kg').value)||0;
+  var horas     = parseFloat(document.getElementById('j-horas').value)||0;
+  var modalidad = document.getElementById('j-modalidad') ? document.getElementById('j-modalidad').value : 'hora';
+
+  // Update modalidad label
+  var lbl = document.getElementById('j-precio-tiempo-label');
+  if(lbl) lbl.textContent = modalidad === 'dia' ? 'Precio día completo ($)' : 'Precio por hora ($)';
+
+  // Calculate subtotals
+  var subBins     = paltaBins * precioBin;
+  var subPaltaKg  = paltaKg * precioPaltaKg;
+  var subC1       = frutC1 * precioC1;
+  var subC2       = frutC2 * precioC2;
+  var subFrutKg   = frutKg * precioFrutKg;
+  var subJornal   = modalidad === 'dia' ? precioHora : horas * precioHora;
+
+  // Show subtotals in readonly fields
+  var setVal = function(id, val){ var el=document.getElementById(id); if(el) el.value = val>0 ? fmtMoney(val) : ''; };
+  setVal('j-sub-bins', subBins);
+  setVal('j-sub-palta-kg', subPaltaKg);
+  setVal('j-sub-c1', subC1);
+  setVal('j-sub-c2', subC2);
+  setVal('j-sub-frut-kg', subFrutKg);
+  setVal('j-sub-jornal', subJornal);
+
+  // Build breakdown
+  var items = [], total = 0;
+  if(paltaBins>0 && precioBin>0){ items.push({label:'🥑 '+paltaBins+' BINs × '+fmtMoney(precioBin), amount:subBins}); total+=subBins; }
+  if(paltaKg>0 && precioPaltaKg>0){ items.push({label:'🥑 '+paltaKg+'kg palta × '+fmtMoney(precioPaltaKg)+'/kg', amount:subPaltaKg}); total+=subPaltaKg; }
+  if(frutC1>0 && precioC1>0){ items.push({label:'🍓 '+frutC1+' cajas 1ra × '+fmtMoney(precioC1), amount:subC1}); total+=subC1; }
+  if(frutC2>0 && precioC2>0){ items.push({label:'🍓 '+frutC2+' cajas 2da × '+fmtMoney(precioC2), amount:subC2}); total+=subC2; }
+  if(frutKg>0 && precioFrutKg>0){ items.push({label:'🍓 '+frutKg+'kg frutilla × '+fmtMoney(precioFrutKg)+'/kg', amount:subFrutKg}); total+=subFrutKg; }
+  if((jornadaMode==='jornal'||jornadaMode==='mixto') && precioHora>0){
+    var jorLabel = modalidad==='dia' ? '⏱️ Día completo' : '⏱️ '+horas+'h × '+fmtMoney(precioHora)+'/h';
+    items.push({label:jorLabel, amount:subJornal}); total+=subJornal;
+  }
+
+  var bdEl = document.getElementById('j-breakdown');
+  if(!items.length){ if(bdEl) bdEl.style.display='none'; return; }
+  if(bdEl) bdEl.style.display='';
+  var bdItems = document.getElementById('j-breakdown-items');
+  if(bdItems) bdItems.innerHTML = items.map(function(it){
+    return '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>'+it.label+'</span><strong style="font-family:var(--font-m)">'+fmtMoney(it.amount)+'</strong></div>';
+  }).join('');
+  var bdTotal = document.getElementById('j-breakdown-total');
+  if(bdTotal) bdTotal.textContent = fmtMoney(total);
 }
 
 // ========== SAVE JORNADA ==========
 function saveJornada(){
-  const wid=parseInt(document.getElementById('j-worker').value);
-  const fecha=document.getElementById('j-fecha').value;
+  var wid = parseInt(document.getElementById('j-worker').value);
+  var fecha = document.getElementById('j-fecha').value;
   if(!wid||!fecha){ toast('⚠️ Trabajador y fecha requeridos'); return; }
-  const w=db.trabajadores.find(x=>x.id===wid);
-  const data={
-    modo:jornadaMode,
-    paltaBins:parseFloat(document.getElementById('j-palta-bins').value)||0,
-    paltaKg:parseFloat(document.getElementById('j-palta-kg').value)||0,
-    frutC1:parseFloat(document.getElementById('j-frut-c1').value)||0,
-    frutC2:parseFloat(document.getElementById('j-frut-c2').value)||0,
-    frutKg:parseFloat(document.getElementById('j-frut-kg').value)||0,
-    horas:parseFloat(document.getElementById('j-horas').value)||0,
-    modalidad:document.getElementById('j-modalidad').value||'hora',
-  };
-  const r=calcJornadaPago(w,data);
-  if(r.total===0){ toast('⚠️ No hay trabajo registrado o el trabajador no tiene tarifas configuradas'); return; }
+  var w = db.trabajadores.find(function(x){ return x.id===wid; });
+
+  // Get quantities
+  var paltaBins = parseFloat(document.getElementById('j-palta-bins').value)||0;
+  var paltaKg   = parseFloat(document.getElementById('j-palta-kg').value)||0;
+  var frutC1    = parseFloat(document.getElementById('j-frut-c1').value)||0;
+  var frutC2    = parseFloat(document.getElementById('j-frut-c2').value)||0;
+  var frutKg    = parseFloat(document.getElementById('j-frut-kg').value)||0;
+  var horas     = parseFloat(document.getElementById('j-horas').value)||0;
+  var modalidad = document.getElementById('j-modalidad') ? document.getElementById('j-modalidad').value : 'hora';
+
+  // Get manual prices
+  var precioBin     = parseFloat(document.getElementById('j-precio-bin') ? document.getElementById('j-precio-bin').value : 0)||0;
+  var precioPaltaKg = parseFloat(document.getElementById('j-precio-palta-kg') ? document.getElementById('j-precio-palta-kg').value : 0)||0;
+  var precioC1      = parseFloat(document.getElementById('j-precio-c1') ? document.getElementById('j-precio-c1').value : 0)||0;
+  var precioC2      = parseFloat(document.getElementById('j-precio-c2') ? document.getElementById('j-precio-c2').value : 0)||0;
+  var precioFrutKg  = parseFloat(document.getElementById('j-precio-frut-kg') ? document.getElementById('j-precio-frut-kg').value : 0)||0;
+  var precioHora    = parseFloat(document.getElementById('j-precio-hora') ? document.getElementById('j-precio-hora').value : 0)||0;
+
+  // Calculate total using manual prices
+  var total = 0;
+  total += paltaBins * precioBin;
+  total += paltaKg * precioPaltaKg;
+  total += frutC1 * precioC1;
+  total += frutC2 * precioC2;
+  total += frutKg * precioFrutKg;
+  if(jornadaMode==='jornal'||jornadaMode==='mixto'){
+    total += modalidad==='dia' ? precioHora : horas * precioHora;
+  }
+
+  if(paltaBins===0&&paltaKg===0&&frutC1===0&&frutC2===0&&frutKg===0&&horas===0){
+    toast('⚠️ Ingresa al menos una cantidad'); return;
+  }
+
   db.jornadas.push({
-    id:genId(db.jornadas),workerId:wid,fecha,modo:jornadaMode,
-    horas:data.horas,modalidad:data.modalidad,
-    tarea:document.getElementById('j-tarea').value||'—',
-    sector:document.getElementById('j-sector').value||'—',
-    paltaBins:data.paltaBins,paltaKg:data.paltaKg,
-    frutC1:data.frutC1,frutC2:data.frutC2,frutKg:data.frutKg,
-    pago:r.total,obs:document.getElementById('j-obs').value
+    id: genId(db.jornadas),
+    workerId: wid,
+    fecha: fecha,
+    modo: jornadaMode,
+    paltaBins: paltaBins, paltaKg: paltaKg,
+    frutC1: frutC1, frutC2: frutC2, frutKg: frutKg,
+    horas: horas, modalidad: modalidad,
+    // Save prices used
+    precioBin: precioBin, precioPaltaKg: precioPaltaKg,
+    precioC1: precioC1, precioC2: precioC2, precioFrutKg: precioFrutKg,
+    precioHora: precioHora,
+    pago: total,
+    tarea: document.getElementById('j-tarea') ? document.getElementById('j-tarea').value : 'Cosecha',
+    sector: document.getElementById('j-sector').value||'—',
+    obs: document.getElementById('j-obs').value
   });
-  save('jornadas'); closeModal('modal-jornada');
-  ['j-horas','j-sector','j-obs','j-palta-bins','j-palta-kg','j-frut-c1','j-frut-c2','j-frut-kg'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
-  document.getElementById('j-breakdown').style.display='none';
-  toast('✅ Jornada registrada por '+fmtMoney(r.total)); renderTrabajadores();
+  save('jornadas');
+  closeModal('modal-jornada');
+  // Clear fields
+  ['j-palta-bins','j-palta-kg','j-frut-c1','j-frut-c2','j-frut-kg','j-horas','j-sector','j-obs',
+   'j-precio-bin','j-precio-palta-kg','j-precio-c1','j-precio-c2','j-precio-frut-kg','j-precio-hora',
+   'j-sub-bins','j-sub-palta-kg','j-sub-c1','j-sub-c2','j-sub-frut-kg','j-sub-jornal'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  var bd=document.getElementById('j-breakdown'); if(bd) bd.style.display='none';
+  toast('✅ Jornada registrada — '+fmtMoney(total));
+  renderTrabajadores();
+  renderDashboard();
 }
 
-// ========== LIQUIDACIONES ==========
-function setLiqRange(r){
-  const now=new Date(), f=d=>d.toISOString().split('T')[0];
-  if(r==='sem'){
-    const d=new Date(now); const day=d.getDay(); const diff=day===0?6:day-1;
-    d.setDate(d.getDate()-diff);
-    document.getElementById('liq-d').value=f(d); document.getElementById('liq-h').value=f(now);
-  } else if(r==='quin'){
-    const d=new Date(now.getFullYear(),now.getMonth(), now.getDate()>=16?16:1);
-    const h=new Date(now.getFullYear(),now.getMonth(), now.getDate()>=16?new Date(now.getFullYear(),now.getMonth()+1,0).getDate():15);
-    document.getElementById('liq-d').value=f(d); document.getElementById('liq-h').value=f(h);
-  } else if(r==='mes'){
-    document.getElementById('liq-d').value=f(new Date(now.getFullYear(),now.getMonth(),1));
-    document.getElementById('liq-h').value=f(new Date(now.getFullYear(),now.getMonth()+1,0));
-  } else if(r==='mes-ant'){
-    document.getElementById('liq-d').value=f(new Date(now.getFullYear(),now.getMonth()-1,1));
-    document.getElementById('liq-h').value=f(new Date(now.getFullYear(),now.getMonth(),0));
-  }
-  renderLiquidaciones();
-}
-
-function buildJornadaDetalle(j){
-  const parts=[];
-  if(j.paltaBins>0) parts.push(`${j.paltaBins} BINs palta`);
-  if(j.paltaKg>0) parts.push(`${j.paltaKg} kg palta`);
-  if(j.frutC1>0) parts.push(`${j.frutC1} cajas 1ra`);
-  if(j.frutC2>0) parts.push(`${j.frutC2} cajas 2da`);
-  if(j.frutKg>0) parts.push(`${j.frutKg} kg frutilla`);
-  if(j.horas>0) parts.push(`${j.horas}h (${j.tarea||'jornal'})`);
-  return parts.join(' · ')||j.tarea||'—';
-}
-
-function modoBadge(modo){
-  const cls={destajo:'badge-amber',jornal:'badge-blue',mixto:'badge-purple'}[modo]||'badge-gray';
-  const lbl={destajo:'Destajo',jornal:'Jornal',mixto:'Mixto'}[modo]||modo;
-  return badge(lbl,cls);
-}
-
-function renderLiquidaciones(){
-  // Populate worker select
-  const sel=document.getElementById('liq-worker');
-  if(sel){
-    const cur=sel.value;
-    sel.innerHTML='<option value="">Todos los activos</option>'+
-      db.trabajadores.filter(w=>w.estado==='Activo').map(w=>`<option value="${w.id}">${w.nombre}</option>`).join('');
-    if(cur) sel.value=cur;
-  }
-  const d=document.getElementById('liq-d').value;
-  const h=document.getElementById('liq-h').value;
-  const wFilter=parseInt(document.getElementById('liq-worker').value)||0;
-  const container=document.getElementById('liq-container');
-  const statsEl=document.getElementById('liq-stats');
-  if(!d||!h){
-    container.innerHTML='<div class="alert alert-info">ℹ️ Selecciona el rango de fechas para generar las liquidaciones.</div>';
-    statsEl.innerHTML=''; return;
-  }
-  const workers=db.trabajadores.filter(w=>w.estado==='Activo'&&(!wFilter||w.id===wFilter));
-  let totalGeneral=0, totalJornadas=0, totalDestajo=0, totalJornal=0;
-  const cards=workers.map(w=>{
-    const jorns=db.jornadas.filter(j=>j.workerId===w.id && inRange(j.fecha,d,h)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
-    if(jorns.length===0) return null;
-    const total=jorns.reduce((s,j)=>s+j.pago,0);
-    totalGeneral+=total; totalJornadas+=jorns.length;
-    jorns.forEach(j=>{ if(j.modo==='destajo') totalDestajo+=j.pago; else if(j.modo==='jornal') totalJornal+=j.pago; else { totalDestajo+=j.pago*0.5; totalJornal+=j.pago*0.5; } });
-    const rows=jorns.map(j=>`<div class="liq-row">
-      <div class="liq-row-date">${fmtDate(j.fecha)}</div>
-      <div class="liq-row-detail">${modoBadge(j.modo||'jornal')} <span style="margin-left:6px">${buildJornadaDetalle(j)}</span>${j.sector&&j.sector!=='—'?`<span style="color:var(--text-muted);font-size:.75rem"> · ${j.sector}</span>`:''}</div>
-      <div class="liq-row-amount">${fmtMoney(j.pago)}</div>
-    </div>`).join('');
-    const inicial=(w.nombre||'?').charAt(0).toUpperCase();
-    return `<div class="liq-card" id="liq-card-${w.id}">
-      <div class="liq-header">
-        <div class="liq-worker-info">
-          <div class="liq-avatar">${inicial}</div>
-          <div><div class="liq-worker-name">${w.nombre}</div><div class="liq-worker-role">${w.rol}${w.rut?' · '+w.rut:''}</div></div>
-        </div>
-        <div class="liq-total-wrap">
-          <div class="liq-total-label">Total a pagar</div>
-          <div class="liq-total-amount">${fmtMoney(total)}</div>
-        </div>
-      </div>
-      <div class="liq-body">
-        <div class="liq-section-title">Detalle · ${fmtDate(d)} al ${fmtDate(h)}</div>
-        ${rows}
-      </div>
-      <div class="liq-footer">
-        <div class="liq-footer-summary">${jorns.length} ${jorns.length===1?'jornada':'jornadas'} · Promedio <strong>${fmtMoney(Math.round(total/jorns.length))}</strong>/día</div>
-        <div class="liq-actions">
-          <button class="btn btn-secondary btn-sm" onclick="exportLiqCSV(${w.id})">📥 CSV</button>
-          <button class="btn btn-amber btn-sm" onclick="printLiquidacion(${w.id})">🖨️ Imprimir</button>
-          <button class="btn btn-primary btn-sm" onclick="pagarLiquidacion(${w.id})">✅ Marcar pagado</button>
-        </div>
-      </div>
-    </div>`;
-  }).filter(Boolean);
-
-  statsEl.innerHTML=`
-    <div class="stat-card" style="--accent:var(--green-mid)"><div class="stat-icon">💰</div><div class="stat-label">Total a pagar</div><div class="stat-value" style="font-size:1.4rem">${fmtMoney(totalGeneral)}</div><div class="stat-unit">${workers.length} ${workers.length===1?'trabajador':'trabajadores'}</div></div>
-    <div class="stat-card" style="--accent:var(--amber)"><div class="stat-icon">🍓</div><div class="stat-label">Destajo</div><div class="stat-value" style="font-size:1.4rem">${fmtMoney(Math.round(totalDestajo))}</div><div class="stat-unit">producción</div></div>
-    <div class="stat-card" style="--accent:var(--blue)"><div class="stat-icon">⏱️</div><div class="stat-label">Jornales</div><div class="stat-value" style="font-size:1.4rem">${fmtMoney(Math.round(totalJornal))}</div><div class="stat-unit">tiempo fijo</div></div>
-    <div class="stat-card" style="--accent:var(--teal)"><div class="stat-icon">📋</div><div class="stat-label">Jornadas</div><div class="stat-value">${totalJornadas}</div><div class="stat-unit">en el período</div></div>`;
-
-  container.innerHTML=cards.length
-    ?cards.join('')
-    :'<div class="liq-card"><div class="liq-empty">📭 No hay jornadas registradas en este rango para los trabajadores seleccionados.</div></div>';
-}
-
-function pagarLiquidacion(workerId){
-  const w=db.trabajadores.find(x=>x.id===workerId);
-  const d=document.getElementById('liq-d').value, h=document.getElementById('liq-h').value;
-  const jorns=db.jornadas.filter(j=>j.workerId===workerId && inRange(j.fecha,d,h));
-  const total=jorns.reduce((s,j)=>s+j.pago,0);
-  if(!confirm(`¿Registrar pago de ${fmtMoney(total)} a ${w.nombre} como Gasto?`)) return;
-  db.costos.push({id:genId(db.costos),desc:`Liquidación ${w.nombre} (${fmtDate(d)} al ${fmtDate(h)})`,cat:'Mano de obra',monto:total,fecha:today(),obs:`${jorns.length} jornadas pagadas`});
-  save('costos');
-  toast('✅ Pago registrado en Costos');
-}
-
-function exportLiqCSV(workerId){
-  const w=db.trabajadores.find(x=>x.id===workerId);
-  const d=document.getElementById('liq-d').value, h=document.getElementById('liq-h').value;
-  const jorns=db.jornadas.filter(j=>j.workerId===workerId && inRange(j.fecha,d,h)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
-  const total=jorns.reduce((s,j)=>s+j.pago,0);
-  const rows=[
-    ['LIQUIDACIÓN DE PAGO'],
-    ['Trabajador',w.nombre],['RUT',w.rut||'—'],['Cargo',w.rol],
-    ['Período',`${fmtDate(d)} al ${fmtDate(h)}`],[],
-    ['Fecha','Tipo','Palta BIN','Palta kg','Frut C1','Frut C2','Frut kg','Horas','Tarea','Sector','Pago']
-  ];
-  jorns.forEach(j=>rows.push([fmtDate(j.fecha),j.modo||'jornal',j.paltaBins||0,j.paltaKg||0,j.frutC1||0,j.frutC2||0,j.frutKg||0,j.horas||0,j.tarea||'',j.sector||'',j.pago]));
-  rows.push([]); rows.push(['','','','','','','','','','TOTAL',total]);
-  const csv=rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`Liquidacion_${w.nombre.replace(/\s/g,'_')}_${d}_${h}.csv`; a.click(); URL.revokeObjectURL(a.href);
-  toast('📥 CSV descargado');
-}
-
-function printLiquidacion(workerId){
-  const w=db.trabajadores.find(x=>x.id===workerId);
-  const d=document.getElementById('liq-d').value, h=document.getElementById('liq-h').value;
-  const jorns=db.jornadas.filter(j=>j.workerId===workerId && inRange(j.fecha,d,h)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
-  const total=jorns.reduce((s,j)=>s+j.pago,0);
-  const now=new Date().toLocaleDateString('es-CL');
-
-  const rows=jorns.map(j=>{
-    const partes=[];
-    if(j.paltaBins>0) partes.push(`${j.paltaBins} BINs palta`);
-    if(j.paltaKg>0) partes.push(`${j.paltaKg} kg palta`);
-    if(j.frutC1>0) partes.push(`${j.frutC1} cajas 1ra`);
-    if(j.frutC2>0) partes.push(`${j.frutC2} cajas 2da`);
-    if(j.frutKg>0) partes.push(`${j.frutKg} kg frutilla`);
-    if(j.horas>0) partes.push(`${j.horas}h jornal`);
-    return `<tr><td>${fmtDate(j.fecha)}</td><td>${j.modo||'jornal'}</td><td>${partes.join(' + ')||'—'}</td><td>${j.tarea||'—'}</td><td>${j.sector||'—'}</td><td style="text-align:right;font-weight:600">${fmtMoney(j.pago)}</td></tr>`;
-  }).join('');
-
-  const win=window.open('','_blank');
-  win.document.write(`<!DOCTYPE html>\x3chtml>\x3chead><meta charset="UTF-8"><title>Liquidación ${w.nombre}</title>
-\x3cstyle>\nbody{font-family:Georgia,serif;max-width:800px;margin:30px auto;color:#1a1a18;padding:20px}
-.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1a3325;padding-bottom:16px;margin-bottom:24px}
-.logo{font-family:Georgia,serif;font-size:1.6rem;color:#1a3325;font-weight:700}
-.sub{font-size:.75rem;color:#666;letter-spacing:2px;text-transform:uppercase;margin-top:4px}
-.doc-type{text-align:right;font-size:.75rem;color:#666}
-.doc-type strong{font-size:1.2rem;color:#1a3325;display:block;margin-bottom:4px}
-.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0;padding:16px;background:#f8f4ec;border-radius:8px}
-.info-item{font-size:.88rem}
-.info-label{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:#666;margin-bottom:3px}
-.info-value{font-weight:700;color:#1a3325}
-h2{color:#2d6a4f;font-size:1rem;margin:24px 0 10px;padding-bottom:6px;border-bottom:1px solid #ddd}
-table{width:100%;border-collapse:collapse;font-size:.82rem}
-th{background:#1a3325;color:#fff;padding:10px 8px;text-align:left;font-size:.72rem;letter-spacing:.5px;text-transform:uppercase}
-td{padding:8px;border-bottom:1px solid #eee}
-.total-box{margin-top:20px;background:#1a3325;color:#f8f4ec;padding:20px 24px;border-radius:10px;display:flex;justify-content:space-between;align-items:center}
-.total-label{font-size:.8rem;letter-spacing:2px;text-transform:uppercase;opacity:.85}
-.total-amount{font-family:Georgia,serif;font-size:2rem;font-weight:700}
-.firma-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:60px}
-.firma{text-align:center;border-top:1px solid #999;padding-top:8px;font-size:.82rem;color:#555}
-.footer{margin-top:40px;text-align:center;font-size:.7rem;color:#999;border-top:1px solid #eee;padding-top:10px}
-@media print{body{margin:10px}.no-print{display:none}}
-.print-btn{position:fixed;top:20px;right:20px;background:#2d6a4f;color:#fff;padding:10px 18px;border:none;border-radius:6px;cursor:pointer;font-weight:600}
-\x3c/style>\x3c/head>\x3cbody>
-<button class="print-btn no-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
-<div class="head">
-  <div><div class="logo">🌿 AgriTech</div><div class="sub">Gestión Agrícola</div></div>
-  <div class="doc-type"><strong>LIQUIDACIÓN DE PAGO</strong>N° ${workerId}-${Date.now().toString().slice(-6)}<br>Emitido el ${now}</div>
-</div>
-<div class="info-grid">
-  <div class="info-item"><div class="info-label">Trabajador</div><div class="info-value">${w.nombre}</div></div>
-  <div class="info-item"><div class="info-label">RUT / ID</div><div class="info-value">${w.rut||'—'}</div></div>
-  <div class="info-item"><div class="info-label">Cargo</div><div class="info-value">${w.rol}</div></div>
-  <div class="info-item"><div class="info-label">Período</div><div class="info-value">${fmtDate(d)} al ${fmtDate(h)}</div></div>
-</div>
-<h2>📋 Detalle de Jornadas (${jorns.length})</h2>
-<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Producción / Tiempo</th><th>Tarea</th><th>Sector</th><th style="text-align:right">Pago</th></tr></thead>
-<tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:#999;padding:20px">Sin jornadas en el período</td></tr>'}</tbody></table>
-<div class="total-box"><div class="total-label">Total líquido a pagar</div><div class="total-amount">${fmtMoney(total)}</div></div>
-<div class="firma-grid">
-  <div class="firma">Firma del Trabajador</div>
-  <div class="firma">Firma Empleador</div>
-</div>
-<div class="footer">Documento generado por AgriTech · ${now}</div>
-\x3cscript>window.onload=()=>setTimeout(()=>window.print(),300)\x3c/script>
-
-\x3c/body>\x3c/html>`);
-  win.document.close();
-  toast('🖨️ Liquidación abierta para imprimir');
-}
 
 // ========== SAVE COSTO ==========
 function saveCosto(){
