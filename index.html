@@ -72,6 +72,7 @@ body{font-family:var(--font-b);background:var(--bg);color:var(--text);min-height
 .content{padding:24px 28px;flex:1}
 .view{display:none;animation:fadeIn .3s ease}
 .view.active{display:block}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
 /* STAT CARDS */
@@ -146,8 +147,8 @@ textarea{resize:vertical;min-height:72px}
 #toast.show{transform:translateY(0)}
 
 /* MODALS */
-.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
-.modal-backdrop.open{display:flex}
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;pointer-events:none}
+.modal-backdrop.open{display:flex;pointer-events:all}
 .modal{background:var(--card);border-radius:var(--radius);padding:26px;width:95%;max-width:580px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:modalIn .3s cubic-bezier(.34,1.56,.64,1)}
 @keyframes modalIn{from{opacity:0;transform:scale(.92) translateY(18px)}to{opacity:1;transform:scale(1) translateY(0)}}
 .modal-title{font-family:var(--font-d);font-size:1.2rem;color:var(--green-deep);margin-bottom:18px;display:flex;align-items:center;gap:7px}
@@ -374,6 +375,12 @@ textarea{resize:vertical;min-height:72px}
 </style>
 </head>
 <body>
+<!-- LOADING SCREEN -->
+<div id="app-loading" style="display:none;position:fixed;inset:0;background:rgba(26,51,37,.97);z-index:99999;flex-direction:column;align-items:center;justify-content:center;pointer-events:all">
+  <div style="font-size:3.5rem;margin-bottom:16px;animation:spin 2s linear infinite">🌿</div>
+  <div style="font-family:Georgia,serif;font-size:1.4rem;color:#b7e4c7;margin-bottom:8px">AgriTech</div>
+  <div style="font-size:.85rem;color:#52b788">Verificando sesión...</div>
+</div>
 
 
 
@@ -2067,6 +2074,7 @@ function openModal(id){
   el.style.display = 'flex';
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
+  el.style.pointerEvents = 'all';
   el.classList.add('open');
   if(id==='modal-animal'){ selectedEspecie=''; renderEspecieSelectGrid(); }
   if(id==='modal-especie'){ renderEspeciesLista(); }
@@ -4412,7 +4420,11 @@ function authErrMsg(code){
 
 function hideLoginModal(){
   var m=document.getElementById('modal-login');
-  if(m){ m.style.display='none'; m.classList.remove('open'); }
+  if(m){ 
+    m.style.display='none'; 
+    m.style.pointerEvents='none';
+    m.classList.remove('open'); 
+  }
 }
 
 function showLoginModal(){
@@ -4672,7 +4684,14 @@ if(document.readyState==='loading'){
 
 function startApp(){
   init();
+  // Show loading overlay while Firebase checks auth state
+  var loadEl = document.getElementById('app-loading');
+  if(loadEl) loadEl.style.display = 'flex';
+  
   _auth.onAuthStateChanged(function(user){
+    // Hide loading overlay
+    if(loadEl) loadEl.style.display = 'none';
+    
     if(user){
       _userId = user.uid;
       onLoginSuccess(user);
@@ -4680,6 +4699,14 @@ function startApp(){
       showLoginModal();
     }
   });
+  
+  // Safety timeout: if Firebase doesn't respond in 8s, show login
+  setTimeout(function(){
+    if(loadEl) loadEl.style.display = 'none';
+    if(!_userId && !document.getElementById('modal-login').classList.contains('open')){
+      showLoginModal();
+    }
+  }, 8000);
 }
 
 
