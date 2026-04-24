@@ -424,7 +424,10 @@ textarea{resize:vertical;min-height:72px}
         <div class="user-role" id="user-email-display">Fundo Principal</div>
       </div>
     </div>
-    <button onclick="doLogout()" class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px;font-size:.72rem">🚪 Cerrar sesión</button>
+    <div id="btn-admin-users" style="display:none">
+      <button onclick="openModal('modal-users');renderUsersPanel()" class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px;font-size:.72rem">👥 Gestionar Usuarios</button>
+    </div>
+    <button onclick="doLogout()" class="btn btn-secondary btn-sm" style="width:100%;margin-top:6px;font-size:.72rem">🚪 Cerrar sesión</button>
   </div>
 </aside>
 <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -1634,25 +1637,103 @@ textarea{resize:vertical;min-height:72px}
 <!-- TOAST -->
 <!-- LOGIN MODAL -->
 <div class="modal-backdrop" id="modal-login" style="z-index:10000;background:rgba(26,51,37,.97)">
-  <div class="modal" style="max-width:400px;text-align:center">
+  <div class="modal" style="max-width:420px;text-align:center">
     <div style="font-size:3rem;margin-bottom:8px">🌿</div>
     <div style="font-family:var(--font-d);font-size:1.5rem;color:var(--green-deep);margin-bottom:4px">AgriTech</div>
-    <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:24px">Gestión Agrícola Integral</div>
-    <div id="login-error" style="display:none;padding:8px 12px;background:#fde8e8;border-radius:8px;color:#b91c1c;font-size:.82rem;margin-bottom:14px"></div>
-    <div class="form-group" style="text-align:left;margin-bottom:12px">
-      <label>Correo electrónico</label>
-      <input type="email" id="login-email" placeholder="correo@ejemplo.com" style="width:100%">
+    <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:20px">Gestión Agrícola Integral</div>
+
+    <!-- Panel: Login normal -->
+    <div id="panel-login">
+      <div id="login-error" style="display:none;padding:8px 12px;background:#fde8e8;border-radius:8px;color:#b91c1c;font-size:.82rem;margin-bottom:14px"></div>
+      <div class="form-group" style="text-align:left;margin-bottom:12px">
+        <label>Correo electrónico</label>
+        <input type="email" id="login-email" placeholder="correo@ejemplo.com" style="width:100%">
+      </div>
+      <div class="form-group" style="text-align:left;margin-bottom:20px">
+        <label>Contraseña</label>
+        <input type="password" id="login-pass" placeholder="••••••••" style="width:100%" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn btn-primary" onclick="doLogin()" style="width:100%;padding:12px;font-size:.95rem">🔐 Ingresar</button>
+      <div style="margin-top:12px;font-size:.75rem;color:var(--text-muted)">
+        <span style="cursor:pointer;text-decoration:underline;color:var(--green-mid)" onclick="showPanel('panel-register')">¿Primera vez? Crear cuenta de administrador</span>
+      </div>
+      <div style="margin-top:10px">
+        <span style="cursor:pointer;font-size:.75rem;text-decoration:underline;color:var(--green-mid)" onclick="showPanel('panel-invite')">¿Tienes código de invitación?</span>
+      </div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <button class="btn btn-secondary btn-sm" onclick="useWithoutLogin()" style="font-size:.72rem">Usar sin conexión (local)</button>
+      </div>
     </div>
-    <div class="form-group" style="text-align:left;margin-bottom:20px">
-      <label>Contraseña</label>
-      <input type="password" id="login-pass" placeholder="••••••••" style="width:100%" onkeydown="if(event.key==='Enter')doLogin()">
+
+    <!-- Panel: Registro admin -->
+    <div id="panel-register" style="display:none">
+      <div id="reg-error" style="display:none;padding:8px 12px;background:#fde8e8;border-radius:8px;color:#b91c1c;font-size:.82rem;margin-bottom:14px"></div>
+      <div style="padding:8px 12px;background:#d1fae5;border-radius:8px;font-size:.78rem;margin-bottom:14px;color:#065f46">
+        ℹ️ Esta cuenta será Administrador del fundo. Solo crea una cuenta de admin por fundo.
+      </div>
+      <div class="form-group" style="text-align:left;margin-bottom:10px">
+        <label>Tu nombre</label>
+        <input type="text" id="reg-nombre" placeholder="Juan Pérez" style="width:100%">
+      </div>
+      <div class="form-group" style="text-align:left;margin-bottom:10px">
+        <label>Correo electrónico</label>
+        <input type="email" id="reg-email" placeholder="correo@ejemplo.com" style="width:100%">
+      </div>
+      <div class="form-group" style="text-align:left;margin-bottom:16px">
+        <label>Contraseña (mín. 6 caracteres)</label>
+        <input type="password" id="reg-pass" placeholder="••••••••" style="width:100%">
+      </div>
+      <button class="btn btn-primary" onclick="doRegister()" style="width:100%;padding:12px">✨ Crear cuenta Admin</button>
+      <div style="margin-top:10px"><span style="cursor:pointer;font-size:.75rem;text-decoration:underline;color:var(--green-mid)" onclick="showPanel('panel-login')">← Volver</span></div>
     </div>
-    <button class="btn btn-primary" onclick="doLogin()" style="width:100%;padding:12px;font-size:.95rem">🔐 Ingresar</button>
-    <div style="margin-top:14px;font-size:.75rem;color:var(--text-muted)">
-      <span id="login-mode-toggle" style="cursor:pointer;text-decoration:underline;color:var(--green-mid)" onclick="toggleLoginMode()">¿Primera vez? Crear cuenta de administrador</span>
+
+    <!-- Panel: Ingresar con código de invitación -->
+    <div id="panel-invite" style="display:none">
+      <div id="inv-error" style="display:none;padding:8px 12px;background:#fde8e8;border-radius:8px;color:#b91c1c;font-size:.82rem;margin-bottom:14px"></div>
+      <div style="padding:8px 12px;background:#dbeafe;border-radius:8px;font-size:.78rem;margin-bottom:14px;color:#1e40af">
+        🔗 Ingresa el código de invitación que recibiste del administrador del fundo.
+      </div>
+      <div class="form-group" style="text-align:left;margin-bottom:10px">
+        <label>Código de invitación</label>
+        <input type="text" id="inv-codigo" placeholder="XXXX-XXXX-XXXX" style="width:100%;font-family:monospace;letter-spacing:2px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div class="form-group" style="text-align:left;margin-bottom:10px">
+        <label>Tu nombre</label>
+        <input type="text" id="inv-nombre" placeholder="Juan Pérez" style="width:100%">
+      </div>
+      <div class="form-group" style="text-align:left;margin-bottom:10px">
+        <label>Tu correo</label>
+        <input type="email" id="inv-email" placeholder="correo@ejemplo.com" style="width:100%">
+      </div>
+      <div class="form-group" style="text-align:left;margin-bottom:16px">
+        <label>Contraseña (mín. 6 caracteres)</label>
+        <input type="password" id="inv-pass" placeholder="••••••••" style="width:100%">
+      </div>
+      <button class="btn btn-primary" onclick="doJoinWithCode()" style="width:100%;padding:12px">🚀 Unirme al fundo</button>
+      <div style="margin-top:10px"><span style="cursor:pointer;font-size:.75rem;text-decoration:underline;color:var(--green-mid)" onclick="showPanel('panel-login')">← Volver</span></div>
     </div>
-    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-      <button class="btn btn-secondary btn-sm" onclick="useWithoutLogin()" style="font-size:.75rem">Usar sin conexión (local)</button>
+  </div>
+</div>
+
+<!-- MODAL: Panel de administración de usuarios (solo admin) -->
+<div class="modal-backdrop" id="modal-users">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-title">👥 Gestión de Usuarios del Fundo</div>
+    <div id="users-lista" style="margin-bottom:16px"></div>
+    <div style="padding:14px;background:#f0faf4;border-radius:10px;border:1px solid var(--border)">
+      <div style="font-weight:700;font-size:.88rem;color:var(--green-deep);margin-bottom:10px">➕ Generar código de invitación</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input type="text" id="inv-new-nombre" placeholder="Nombre del invitado (ej: Mi patrón)" style="flex:1;min-width:160px">
+        <button class="btn btn-primary" onclick="generarInvitacion()">🔗 Generar Código</button>
+      </div>
+      <div id="inv-resultado" style="margin-top:12px;display:none">
+        <div style="padding:10px 14px;background:#1a3325;border-radius:8px;font-family:monospace;color:#b7e4c7;font-size:1.1rem;letter-spacing:3px;text-align:center" id="inv-codigo-display"></div>
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:6px;text-align:center">⏱️ Este código expira en 24 horas y es de un solo uso</div>
+        <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px" onclick="copiarCodigo()">📋 Copiar código</button>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-users')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -1740,9 +1821,9 @@ function showSyncStatus(msg, color){
 
 // ========== FIREBASE SYNC ==========
 async function syncToCloud(key){
-  if(!_syncEnabled || !_userId) return;
+  if(!_syncEnabled || !_fundoId) return;
   try {
-    await _db.collection('fundos').doc(_userId).collection(key).doc('data')
+    await _db.collection('fundos').doc(_fundoId).collection(key).doc('data')
       .set({ items: db[key], updatedAt: new Date().toISOString() });
     showSyncStatus('☁️ Sincronizado', '#52b788');
   } catch(e) {
@@ -1752,22 +1833,22 @@ async function syncToCloud(key){
 }
 
 async function loadFromCloud(){
-  if(!_userId) return;
+  if(!_fundoId) return;
   showSyncStatus('⏳ Cargando datos...', '#3b82f6');
   var loaded = 0;
   for(var key of KEYS){
     try {
-      var doc = await _db.collection('fundos').doc(_userId).collection(key).doc('data').get();
+      var doc = await _db.collection('fundos').doc(_fundoId).collection(key).doc('data').get();
       if(doc.exists && doc.data().items && doc.data().items.length > 0){
         db[key] = doc.data().items;
-        save(key); // also update localStorage
+        save(key);
         loaded++;
       }
     } catch(e) { console.warn('Load error for', key, e.message); }
   }
   showSyncStatus('✅ ' + loaded + ' módulos cargados', '#52b788');
   renderDashboard();
-  toast('☁️ Datos sincronizados desde la nube');
+  toast('☁️ Datos del fundo cargados correctamente');
 }
 
 // Override save() to also sync to cloud
@@ -4310,67 +4391,249 @@ function renderHistorialAsistencia(){
   }).join('') : '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Sin registros en ese período</td></tr>';
 }
 
-// ========== AUTH & LOGIN ==========
-var _loginMode = 'signin'; // 'signin' or 'signup'
+// ========== AUTH & MULTI-USER SYSTEM ==========
+var _fundoId = null;  // The shared fundo ID (admin's UID)
+var _isAdmin = false; // Is current user the admin?
 
-function toggleLoginMode(){
-  _loginMode = _loginMode === 'signin' ? 'signup' : 'signin';
-  var toggle = document.getElementById('login-mode-toggle');
-  if(toggle) toggle.textContent = _loginMode === 'signup' ? 
-    '¿Ya tienes cuenta? Ingresar' : '¿Primera vez? Crear cuenta de administrador';
-  var btn = document.querySelector('#modal-login .btn-primary');
-  if(btn) btn.textContent = _loginMode === 'signup' ? '✨ Crear cuenta' : '🔐 Ingresar';
+function showPanel(id){
+  ['panel-login','panel-register','panel-invite'].forEach(function(p){
+    var el=document.getElementById(p); if(el) el.style.display='none';
+  });
+  var el=document.getElementById(id); if(el) el.style.display='block';
 }
 
+function authErrMsg(code){
+  return code==='auth/wrong-password'||code==='auth/invalid-credential' ? 'Contraseña incorrecta' :
+         code==='auth/user-not-found' ? 'Usuario no encontrado' :
+         code==='auth/email-already-in-use' ? 'Correo ya registrado' :
+         code==='auth/weak-password' ? 'Contraseña muy débil (mín. 6 caracteres)' :
+         code==='auth/invalid-email' ? 'Correo inválido' : 'Error: ' + code;
+}
+
+function hideLoginModal(){
+  var m=document.getElementById('modal-login');
+  if(m){ m.style.display='none'; m.classList.remove('open'); }
+}
+
+function showLoginModal(){
+  var m=document.getElementById('modal-login');
+  if(m){ m.style.display='flex'; m.style.alignItems='center'; m.style.justifyContent='center'; m.classList.add('open'); }
+  showPanel('panel-login');
+}
+
+// ---- LOGIN (existing users) ----
 function doLogin(){
-  var email = document.getElementById('login-email').value.trim();
-  var pass = document.getElementById('login-pass').value;
-  var errEl = document.getElementById('login-error');
-  if(!email || !pass){ errEl.style.display='block'; errEl.textContent='Ingresa correo y contraseña'; return; }
-  errEl.style.display = 'none';
-  var btn = document.querySelector('#modal-login .btn-primary');
-  if(btn){ btn.textContent = '⏳ Cargando...'; btn.disabled = true; }
-  
-  var authFn = _loginMode === 'signup' ? 
-    _auth.createUserWithEmailAndPassword(email, pass) :
-    _auth.signInWithEmailAndPassword(email, pass);
-    
-  authFn.then(function(cred){
-    _userId = cred.user.uid;
-    _syncEnabled = true;
-    var modal = document.getElementById('modal-login');
-    if(modal){ modal.style.display = 'none'; modal.classList.remove('open'); }
+  var email=document.getElementById('login-email').value.trim();
+  var pass=document.getElementById('login-pass').value;
+  var errEl=document.getElementById('login-error');
+  if(!email||!pass){ errEl.style.display='block'; errEl.textContent='Ingresa correo y contraseña'; return; }
+  errEl.style.display='none';
+  _auth.signInWithEmailAndPassword(email, pass)
+    .then(function(cred){ onLoginSuccess(cred.user); })
+    .catch(function(e){ errEl.style.display='block'; errEl.textContent=authErrMsg(e.code); });
+}
+
+// ---- REGISTER ADMIN ----
+function doRegister(){
+  var nombre=document.getElementById('reg-nombre').value.trim();
+  var email=document.getElementById('reg-email').value.trim();
+  var pass=document.getElementById('reg-pass').value;
+  var errEl=document.getElementById('reg-error');
+  if(!nombre||!email||!pass){ errEl.style.display='block'; errEl.textContent='Completa todos los campos'; return; }
+  errEl.style.display='none';
+  _auth.createUserWithEmailAndPassword(email, pass)
+    .then(function(cred){
+      var uid=cred.user.uid;
+      // Save admin profile in Firestore
+      return _db.collection('usuarios').doc(uid).set({
+        nombre: nombre,
+        email: email,
+        rol: 'admin',
+        fundoId: uid, // admin's own UID is the fundo ID
+        creadoEn: new Date().toISOString()
+      }).then(function(){ onLoginSuccess(cred.user); });
+    })
+    .catch(function(e){ errEl.style.display='block'; errEl.textContent=authErrMsg(e.code); });
+}
+
+// ---- JOIN WITH INVITATION CODE ----
+function doJoinWithCode(){
+  var codigo=document.getElementById('inv-codigo').value.trim().toUpperCase();
+  var nombre=document.getElementById('inv-nombre').value.trim();
+  var email=document.getElementById('inv-email').value.trim();
+  var pass=document.getElementById('inv-pass').value;
+  var errEl=document.getElementById('inv-error');
+  if(!codigo||!nombre||!email||!pass){ errEl.style.display='block'; errEl.textContent='Completa todos los campos'; return; }
+  errEl.style.display='none';
+
+  // Verify invitation code
+  _db.collection('invitaciones').doc(codigo).get().then(function(doc){
+    if(!doc.exists){ errEl.style.display='block'; errEl.textContent='Código inválido o expirado'; return; }
+    var inv=doc.data();
+    if(inv.usado){ errEl.style.display='block'; errEl.textContent='Este código ya fue usado'; return; }
+    var ahora=new Date();
+    if(new Date(inv.expira) < ahora){ errEl.style.display='block'; errEl.textContent='Este código ha expirado'; return; }
+
+    // Create Firebase account
+    _auth.createUserWithEmailAndPassword(email, pass)
+      .then(function(cred){
+        var uid=cred.user.uid;
+        var fundoId=inv.fundoId;
+        // Save user profile
+        return _db.collection('usuarios').doc(uid).set({
+          nombre: nombre,
+          email: email,
+          rol: 'usuario',
+          fundoId: fundoId,
+          invitadoPor: inv.creadoPor,
+          creadoEn: new Date().toISOString()
+        }).then(function(){
+          // Mark invitation as used
+          return _db.collection('invitaciones').doc(codigo).update({
+            usado: true,
+            usadoPor: uid,
+            usadoEn: new Date().toISOString()
+          });
+        }).then(function(){ onLoginSuccess(cred.user); });
+      })
+      .catch(function(e){ errEl.style.display='block'; errEl.textContent=authErrMsg(e.code); });
+  }).catch(function(){ errEl.style.display='block'; errEl.textContent='Error verificando código. Intenta de nuevo.'; });
+}
+
+// ---- ON LOGIN SUCCESS ----
+function onLoginSuccess(user){
+  _userId=user.uid;
+  _db.collection('usuarios').doc(user.uid).get().then(function(doc){
+    if(doc.exists){
+      var perfil=doc.data();
+      _fundoId=perfil.fundoId || user.uid;
+      _isAdmin=(perfil.rol==='admin');
+      _syncEnabled=true;
+      // Update UI
+      var nameEl=document.getElementById('user-email-display');
+      if(nameEl) nameEl.textContent=perfil.nombre||user.email;
+      var avatarEl=document.getElementById('user-avatar-letter');
+      if(avatarEl) avatarEl.textContent=(perfil.nombre||user.email).charAt(0).toUpperCase();
+      var adminBtn=document.getElementById('btn-admin-users');
+      if(adminBtn) adminBtn.style.display=_isAdmin?'block':'none';
+    } else {
+      // First time admin login (no profile yet) - create it
+      _fundoId=user.uid;
+      _isAdmin=true;
+      _syncEnabled=true;
+      _db.collection('usuarios').doc(user.uid).set({
+        nombre: user.email,
+        email: user.email,
+        rol: 'admin',
+        fundoId: user.uid,
+        creadoEn: new Date().toISOString()
+      });
+      var adminBtn=document.getElementById('btn-admin-users');
+      if(adminBtn) adminBtn.style.display='block';
+    }
+    hideLoginModal();
     showSyncStatus('☁️ Conectado', '#52b788');
     loadFromCloud();
-  }).catch(function(e){
-    errEl.style.display = 'block';
-    errEl.textContent = e.code === 'auth/wrong-password' ? 'Contraseña incorrecta' :
-                        e.code === 'auth/user-not-found' ? 'Usuario no encontrado' :
-                        e.code === 'auth/email-already-in-use' ? 'Correo ya registrado' :
-                        e.code === 'auth/weak-password' ? 'Contraseña muy débil (min 6 caracteres)' :
-                        e.message;
-    if(btn){ btn.textContent = _loginMode==='signup'?'✨ Crear cuenta':'🔐 Ingresar'; btn.disabled=false; }
+  });
+}
+
+// ---- LOGOUT ----
+function doLogout(){
+  _auth.signOut().then(function(){
+    _syncEnabled=false; _userId=null; _fundoId=null; _isAdmin=false;
+    showSyncStatus('','');
+    var adminBtn=document.getElementById('btn-admin-users');
+    if(adminBtn) adminBtn.style.display='none';
+    showLoginModal();
+    toast('Sesión cerrada');
   });
 }
 
 function useWithoutLogin(){
-  var modal = document.getElementById('modal-login');
-  if(modal){ modal.style.display = 'none'; modal.classList.remove('open'); }
-  _syncEnabled = false;
-  showSyncStatus('💾 Local', '#e9a84c');
-  toast('Usando modo local sin sincronización');
+  hideLoginModal();
+  _syncEnabled=false;
+  showSyncStatus('💾 Local','#e9a84c');
+  toast('Modo local — sin sincronización en la nube');
 }
 
-function doLogout(){
-  _auth.signOut().then(function(){
-    _syncEnabled = false;
-    _userId = null;
-    showSyncStatus('', '');
-    // Show login modal
-    var modal = document.getElementById('modal-login');
-    if(modal){ modal.style.display='flex'; modal.style.alignItems='center'; modal.style.justifyContent='center'; modal.classList.add('open'); }
-    toast('Sesión cerrada');
+// ---- GENERATE INVITATION CODE ----
+function generarInvitacion(){
+  if(!_isAdmin){ toast('⚠️ Solo el administrador puede generar invitaciones'); return; }
+  var nombre=document.getElementById('inv-new-nombre').value.trim();
+  if(!nombre){ toast('⚠️ Ingresa el nombre del invitado'); return; }
+
+  // Generate unique code
+  var chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var code='';
+  for(var i=0;i<12;i++){
+    if(i===4||i===8) code+='-';
+    code+=chars.charAt(Math.floor(Math.random()*chars.length));
+  }
+
+  var expira=new Date();
+  expira.setHours(expira.getHours()+24);
+
+  _db.collection('invitaciones').doc(code).set({
+    fundoId: _fundoId,
+    creadoPor: _userId,
+    nombreInvitado: nombre,
+    creadoEn: new Date().toISOString(),
+    expira: expira.toISOString(),
+    usado: false
+  }).then(function(){
+    document.getElementById('inv-codigo-display').textContent=code;
+    document.getElementById('inv-resultado').style.display='block';
+    document.getElementById('inv-new-nombre').value='';
+    // Refresh user list
+    renderUsersPanel();
+    toast('✅ Código generado para '+nombre);
+  }).catch(function(e){ toast('Error: '+e.message); });
+}
+
+function copiarCodigo(){
+  var code=document.getElementById('inv-codigo-display').textContent;
+  navigator.clipboard.writeText(code).then(function(){
+    toast('📋 Código copiado al portapapeles');
+  }).catch(function(){
+    prompt('Copia este código:', code);
   });
+}
+
+// ---- RENDER USERS PANEL ----
+function renderUsersPanel(){
+  if(!_isAdmin||!_fundoId) return;
+  var lista=document.getElementById('users-lista');
+  if(!lista) return;
+  lista.innerHTML='<div style="color:var(--text-muted);font-size:.82rem;padding:8px 0">⏳ Cargando usuarios...</div>';
+
+  _db.collection('usuarios').where('fundoId','==',_fundoId).get().then(function(snap){
+    if(snap.empty){ lista.innerHTML='<p style="color:var(--text-muted);font-size:.85rem">No hay usuarios registrados aún.</p>'; return; }
+    var html='<div style="margin-bottom:10px;font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Usuarios con acceso al fundo</div>';
+    snap.forEach(function(doc){
+      var u=doc.data();
+      var esAdmin=u.rol==='admin';
+      var esYo=doc.id===_userId;
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:'+(esAdmin?'#f0faf4':'#f9f9f9')+';border-radius:8px;margin-bottom:8px;border:1px solid var(--border)">';
+      html+='<div>';
+      html+='<div style="font-weight:700;font-size:.88rem;color:var(--green-deep)">'+(u.nombre||u.email)+(esYo?' (tú)':'')+'</div>';
+      html+='<div style="font-size:.73rem;color:var(--text-muted)">'+u.email+' · <span class="badge '+(esAdmin?'badge-green':'badge-blue')+'">'+(esAdmin?'Administrador':'Usuario')+'</span></div>';
+      html+='</div>';
+      if(!esAdmin&&!esYo){
+        html+='<button class="btn btn-danger btn-sm" onclick="revocarAcceso(''+doc.id+'',''+u.nombre+'')">Revocar</button>';
+      }
+      html+='</div>';
+    });
+    lista.innerHTML=html;
+  });
+}
+
+// ---- REVOKE ACCESS ----
+function revocarAcceso(uid, nombre){
+  if(!confirm('¿Revocar acceso a '+nombre+'? No podrá volver a ingresar a menos que lo invites de nuevo.')) return;
+  _db.collection('usuarios').doc(uid).delete().then(function(){
+    toast('✅ Acceso revocado para '+nombre);
+    renderUsersPanel();
+  }).catch(function(e){ toast('Error: '+e.message); });
 }
 
 // ========== INIT ==========
@@ -4409,24 +4672,12 @@ if(document.readyState==='loading'){
 
 function startApp(){
   init();
-  // Check if user is already logged in
   _auth.onAuthStateChanged(function(user){
     if(user){
       _userId = user.uid;
-      _syncEnabled = true;
-      var modal = document.getElementById('modal-login');
-      if(modal){ modal.style.display='none'; modal.classList.remove('open'); }
-      showSyncStatus('☁️ Conectado', '#52b788');
-      loadFromCloud();
+      onLoginSuccess(user);
     } else {
-      // Show login modal
-      var modal = document.getElementById('modal-login');
-      if(modal){ 
-        modal.style.display='flex'; 
-        modal.style.alignItems='center'; 
-        modal.style.justifyContent='center'; 
-        modal.classList.add('open'); 
-      }
+      showLoginModal();
     }
   });
 }
