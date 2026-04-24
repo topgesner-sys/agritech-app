@@ -6,6 +6,9 @@
 <title>AgriTech v2 – Gestión Agrícola Integral</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <style>
 
 
@@ -415,12 +418,13 @@ textarea{resize:vertical;min-height:72px}
   </nav>
   <div class="sidebar-footer">
     <div class="user-card">
-      <div class="user-avatar">A</div>
+      <div class="user-avatar" id="user-avatar-letter">A</div>
       <div>
         <div class="user-name">Administrador</div>
-        <div class="user-role">Fundo Principal</div>
+        <div class="user-role" id="user-email-display">Fundo Principal</div>
       </div>
     </div>
+    <button onclick="doLogout()" class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px;font-size:.72rem">🚪 Cerrar sesión</button>
   </div>
 </aside>
 <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
@@ -442,6 +446,7 @@ textarea{resize:vertical;min-height:72px}
       </div>
     </div>
     <div class="topbar-right">
+      <span id="sync-status" style="font-size:.72rem;color:var(--text-muted);font-family:var(--font-m)"></span>
       <button id="sound-toggle-btn" class="notif-btn" onclick="toggleSound()" title="Silenciar alertas" style="font-size:18px;background:none;border:none;cursor:pointer;padding:4px">🔔</button>
       <button class="notif-btn" onclick="toggleNotifPanel()" id="notifBtn">🔔<span class="notif-badge" id="notif-count" style="display:none">0</span></button>
       <button class="btn btn-primary" onclick="openQuickAdd()">＋ Nuevo</button>
@@ -1627,6 +1632,31 @@ textarea{resize:vertical;min-height:72px}
 
 
 <!-- TOAST -->
+<!-- LOGIN MODAL -->
+<div class="modal-backdrop" id="modal-login" style="z-index:10000;background:rgba(26,51,37,.97)">
+  <div class="modal" style="max-width:400px;text-align:center">
+    <div style="font-size:3rem;margin-bottom:8px">🌿</div>
+    <div style="font-family:var(--font-d);font-size:1.5rem;color:var(--green-deep);margin-bottom:4px">AgriTech</div>
+    <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:24px">Gestión Agrícola Integral</div>
+    <div id="login-error" style="display:none;padding:8px 12px;background:#fde8e8;border-radius:8px;color:#b91c1c;font-size:.82rem;margin-bottom:14px"></div>
+    <div class="form-group" style="text-align:left;margin-bottom:12px">
+      <label>Correo electrónico</label>
+      <input type="email" id="login-email" placeholder="correo@ejemplo.com" style="width:100%">
+    </div>
+    <div class="form-group" style="text-align:left;margin-bottom:20px">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" style="width:100%" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()" style="width:100%;padding:12px;font-size:.95rem">🔐 Ingresar</button>
+    <div style="margin-top:14px;font-size:.75rem;color:var(--text-muted)">
+      <span id="login-mode-toggle" style="cursor:pointer;text-decoration:underline;color:var(--green-mid)" onclick="toggleLoginMode()">¿Primera vez? Crear cuenta de administrador</span>
+    </div>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+      <button class="btn btn-secondary btn-sm" onclick="useWithoutLogin()" style="font-size:.75rem">Usar sin conexión (local)</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONFIRM DELETE MODAL -->
 <div class="modal-backdrop" id="modal-confirm-delete" style="z-index:9998">
   <div class="modal" style="max-width:380px;text-align:center">
@@ -1682,6 +1712,66 @@ function _safeChart(id, cfg) {
     return null;
   }
 }
+
+// ========== FIREBASE CONFIG ==========
+const firebaseConfig = {
+  apiKey: "AIzaSyDQMDWD1JZGwVriBAu4UWXYgUkIbgL5MKI",
+  authDomain: "agritech-fundo.firebaseapp.com",
+  projectId: "agritech-fundo",
+  storageBucket: "agritech-fundo.firebasestorage.app",
+  messagingSenderId: "1008849310281",
+  appId: "1:1008849310281:web:9a5d798add9044bde12598" 
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const _db = firebase.firestore();
+const _auth = firebase.auth();
+
+// Sync status indicator
+var _syncEnabled = false;
+var _userId = null;
+var _userRole = 'viewer'; // 'admin' or 'viewer'
+
+function showSyncStatus(msg, color){
+  var el = document.getElementById('sync-status');
+  if(el){ el.textContent = msg; el.style.color = color || '#52b788'; }
+}
+
+// ========== FIREBASE SYNC ==========
+async function syncToCloud(key){
+  if(!_syncEnabled || !_userId) return;
+  try {
+    await _db.collection('fundos').doc(_userId).collection(key).doc('data')
+      .set({ items: db[key], updatedAt: new Date().toISOString() });
+    showSyncStatus('☁️ Sincronizado', '#52b788');
+  } catch(e) {
+    showSyncStatus('⚠️ Sin conexión', '#e9a84c');
+    console.warn('Sync error:', e.message);
+  }
+}
+
+async function loadFromCloud(){
+  if(!_userId) return;
+  showSyncStatus('⏳ Cargando datos...', '#3b82f6');
+  var loaded = 0;
+  for(var key of KEYS){
+    try {
+      var doc = await _db.collection('fundos').doc(_userId).collection(key).doc('data').get();
+      if(doc.exists && doc.data().items && doc.data().items.length > 0){
+        db[key] = doc.data().items;
+        save(key); // also update localStorage
+        loaded++;
+      }
+    } catch(e) { console.warn('Load error for', key, e.message); }
+  }
+  showSyncStatus('✅ ' + loaded + ' módulos cargados', '#52b788');
+  renderDashboard();
+  toast('☁️ Datos sincronizados desde la nube');
+}
+
+// Override save() to also sync to cloud
+var _originalSave = null; // will be set after save() is defined
 
 // ========== DATA ==========
 const KEYS = ['cosechas','insumos','inventario','trabajadores','jornadas','costos','clima','eventos','animales','sanidad','reproduccion','especies','creditos','cuotas','proyecciones','presupuestos','presupItems','asistencia'];
@@ -4220,6 +4310,69 @@ function renderHistorialAsistencia(){
   }).join('') : '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Sin registros en ese período</td></tr>';
 }
 
+// ========== AUTH & LOGIN ==========
+var _loginMode = 'signin'; // 'signin' or 'signup'
+
+function toggleLoginMode(){
+  _loginMode = _loginMode === 'signin' ? 'signup' : 'signin';
+  var toggle = document.getElementById('login-mode-toggle');
+  if(toggle) toggle.textContent = _loginMode === 'signup' ? 
+    '¿Ya tienes cuenta? Ingresar' : '¿Primera vez? Crear cuenta de administrador';
+  var btn = document.querySelector('#modal-login .btn-primary');
+  if(btn) btn.textContent = _loginMode === 'signup' ? '✨ Crear cuenta' : '🔐 Ingresar';
+}
+
+function doLogin(){
+  var email = document.getElementById('login-email').value.trim();
+  var pass = document.getElementById('login-pass').value;
+  var errEl = document.getElementById('login-error');
+  if(!email || !pass){ errEl.style.display='block'; errEl.textContent='Ingresa correo y contraseña'; return; }
+  errEl.style.display = 'none';
+  var btn = document.querySelector('#modal-login .btn-primary');
+  if(btn){ btn.textContent = '⏳ Cargando...'; btn.disabled = true; }
+  
+  var authFn = _loginMode === 'signup' ? 
+    _auth.createUserWithEmailAndPassword(email, pass) :
+    _auth.signInWithEmailAndPassword(email, pass);
+    
+  authFn.then(function(cred){
+    _userId = cred.user.uid;
+    _syncEnabled = true;
+    var modal = document.getElementById('modal-login');
+    if(modal){ modal.style.display = 'none'; modal.classList.remove('open'); }
+    showSyncStatus('☁️ Conectado', '#52b788');
+    loadFromCloud();
+  }).catch(function(e){
+    errEl.style.display = 'block';
+    errEl.textContent = e.code === 'auth/wrong-password' ? 'Contraseña incorrecta' :
+                        e.code === 'auth/user-not-found' ? 'Usuario no encontrado' :
+                        e.code === 'auth/email-already-in-use' ? 'Correo ya registrado' :
+                        e.code === 'auth/weak-password' ? 'Contraseña muy débil (min 6 caracteres)' :
+                        e.message;
+    if(btn){ btn.textContent = _loginMode==='signup'?'✨ Crear cuenta':'🔐 Ingresar'; btn.disabled=false; }
+  });
+}
+
+function useWithoutLogin(){
+  var modal = document.getElementById('modal-login');
+  if(modal){ modal.style.display = 'none'; modal.classList.remove('open'); }
+  _syncEnabled = false;
+  showSyncStatus('💾 Local', '#e9a84c');
+  toast('Usando modo local sin sincronización');
+}
+
+function doLogout(){
+  _auth.signOut().then(function(){
+    _syncEnabled = false;
+    _userId = null;
+    showSyncStatus('', '');
+    // Show login modal
+    var modal = document.getElementById('modal-login');
+    if(modal){ modal.style.display='flex'; modal.style.alignItems='center'; modal.style.justifyContent='center'; modal.classList.add('open'); }
+    toast('Sesión cerrada');
+  });
+}
+
 // ========== INIT ==========
 function init(){
   console.log('INIT START');
@@ -4249,9 +4402,33 @@ function init(){
 }
 
 if(document.readyState==='loading'){
-  document.addEventListener('DOMContentLoaded',init);
+  document.addEventListener('DOMContentLoaded', startApp);
 } else {
+  startApp();
+}
+
+function startApp(){
   init();
+  // Check if user is already logged in
+  _auth.onAuthStateChanged(function(user){
+    if(user){
+      _userId = user.uid;
+      _syncEnabled = true;
+      var modal = document.getElementById('modal-login');
+      if(modal){ modal.style.display='none'; modal.classList.remove('open'); }
+      showSyncStatus('☁️ Conectado', '#52b788');
+      loadFromCloud();
+    } else {
+      // Show login modal
+      var modal = document.getElementById('modal-login');
+      if(modal){ 
+        modal.style.display='flex'; 
+        modal.style.alignItems='center'; 
+        modal.style.justifyContent='center'; 
+        modal.classList.add('open'); 
+      }
+    }
+  });
 }
 
 
