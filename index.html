@@ -1092,7 +1092,7 @@ textarea{resize:vertical;min-height:72px}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-secondary" onclick="openModal('modal-comprador')">🏢 Compradores</button>
-        <button class="btn btn-primary" onclick="openModal('modal-envase')">＋ Movimiento</button>
+        <button class="btn btn-primary" onclick="populateEnvaseSelects();openModal('modal-envase')">＋ Movimiento</button>
       </div>
     </div>
 
@@ -1885,9 +1885,13 @@ textarea{resize:vertical;min-height:72px}
   <div class="form-grid">
     <div class="form-group">
       <label>Comprador *</label>
-      <select id="env-comprador">
-        <option value="">Seleccionar comprador...</option>
-      </select>
+      <div style="display:flex;gap:6px">
+        <select id="env-comprador" style="flex:1">
+          <option value="">Seleccionar comprador...</option>
+        </select>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modal-envase');openModal('modal-comprador')" title="Agregar nuevo comprador" style="white-space:nowrap">＋ Nuevo</button>
+      </div>
+      <div id="env-comp-hint" style="font-size:.72rem;color:var(--text-muted);margin-top:3px">Si no hay compradores, agrega uno primero con "＋ Nuevo"</div>
     </div>
     <div class="form-group">
       <label>Tipo de envase *</label>
@@ -1971,6 +1975,7 @@ textarea{resize:vertical;min-height:72px}
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-jornada')"><span style="font-size:18px">👷</span> Registrar Jornada</button>
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-costo')"><span style="font-size:18px">💰</span> Registrar Gasto</button>
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-clima')"><span style="font-size:18px">🌦️</span> Registrar Clima</button>
+    <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-envase');populateEnvaseSelects()"><span style="font-size:18px">🧺</span> Registrar Envase</button>
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-animal')"><span style="font-size:18px">🐄</span> Registrar Animal</button>
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-sanidad')"><span style="font-size:18px">💉</span> Evento Sanitario</button>
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-evento')"><span style="font-size:18px">📅</span> Nueva Tarea</button>
@@ -4929,6 +4934,12 @@ function saveEnvase(){
   var mov = document.getElementById('env-movimiento').value;
   var cant = parseInt(document.getElementById('env-cantidad').value) || 0;
   var fecha = document.getElementById('env-fecha').value;
+  if(!db.compradores.length){ 
+    closeModal('modal-envase'); 
+    openModal('modal-comprador'); 
+    toast('⚠️ Primero registra un comprador'); 
+    return; 
+  }
   if(!compId || !cant || !fecha){ toast('⚠️ Completa comprador, cantidad y fecha'); return; }
   
   db.envases.push({
@@ -4963,6 +4974,13 @@ function clearFEnvases(){
 function renderEnvases(){
   populateEnvaseSelects();
   renderCompradoresList();
+  // Show hint if no compradores
+  var hint = document.getElementById('envases-resumen');
+  if(hint && !db.compradores.length){
+    hint.innerHTML = '<div class="alert alert-info">ℹ️ <strong>Primero registra los compradores.</strong> Haz clic en <strong>🏢 Compradores</strong> para agregar las empresas que compran tu producción, luego podrás registrar movimientos de envases.</div>';
+  } else if(hint) {
+    hint.innerHTML = '';
+  }
 
   var fComp = document.getElementById('f-env-comprador') ? document.getElementById('f-env-comprador').value : '';
   var fTipo = document.getElementById('f-env-tipo') ? document.getElementById('f-env-tipo').value : '';
