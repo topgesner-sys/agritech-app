@@ -2122,6 +2122,7 @@ const _auth = firebase.auth();
 var _syncEnabled = false;
 var _userId = null;
 var _userRole = 'viewer'; // 'admin' or 'viewer'
+var _cloudLoaded = false; // Track if cloud data has been loaded
 
 function showSyncStatus(msg, color){
   var el = document.getElementById('sync-status');
@@ -2262,9 +2263,19 @@ const _store = {
   get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
   set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 };
-KEYS.forEach(k => { try { db[k] = JSON.parse(_store.get('agt2_'+k)||'[]'); } catch(e){ db[k]=[]; } });
+// Initialize empty - data will come from Firebase
+KEYS.forEach(k => { db[k] = []; });
 
-function save(k){ _store.set('agt2_'+k, JSON.stringify(db[k])); }
+function save(k){ 
+  // Always sync to cloud if connected (Firebase is primary source of truth)
+  if(_syncEnabled && _fundoId){
+    clearTimeout(window['_syncTimer_'+k]);
+    window['_syncTimer_'+k] = setTimeout(function(){ syncToCloud(k); }, 800);
+  } else {
+    // Only use localStorage if not connected to cloud
+    try { _store.set('agt2_'+k, JSON.stringify(db[k])); } catch(e){}
+  }
+}
 function genId(arr){ return arr.length ? Math.max(...arr.map(x=>x.id))+1 : 1; }
 function today(){ return new Date().toISOString().split('T')[0]; }
 function fmtDate(d){ if(!d) return '—'; const p=d.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; }
@@ -4829,6 +4840,11 @@ function doJoinWithCode(){
 // ---- ON LOGIN SUCCESS ----
 function onLoginSuccess(user){
   _userId=user.uid;
+  // Clear any stale local data before loading from cloud
+  KEYS.forEach(function(k){ 
+    try { localStorage.removeItem('agt2_'+k); } catch(e){}
+    db[k] = [];
+  });
   _db.collection('usuarios').doc(user.uid).get().then(function(doc){
     if(doc.exists){
       var perfil=doc.data();
@@ -4878,8 +4894,16 @@ function doLogout(){
 function useWithoutLogin(){
   hideLoginModal();
   _syncEnabled=false;
+  // In offline mode, load from localStorage as fallback
+  KEYS.forEach(function(k){ 
+    try { 
+      var saved = localStorage.getItem('agt2_'+k);
+      if(saved) db[k] = JSON.parse(saved);
+    } catch(e){ db[k]=[]; }
+  });
   showSyncStatus('💾 Local','#e9a84c');
-  toast('Modo local — sin sincronización en la nube');
+  renderDashboard();
+  toast('Modo local — usando datos guardados en este dispositivo');
 }
 
 // ---- GENERATE INVITATION CODE ----
@@ -5355,7 +5379,7 @@ function setLiqRange(tipo){
 // ========== INIT ==========
 function init(){
   console.log('INIT START');
-  try { seed(); } catch(e){ console.error('seed:', e); }
+  // seed() removed - data comes from Firebase cloud
   
   const safeSet=(id,val)=>{try{const el=document.getElementById(id);if(el)el.value=val;}catch(e){}};
   const now=new Date(), f=d=>d.toISOString().split('T')[0], t=today();
