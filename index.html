@@ -5755,6 +5755,118 @@ function exportLiqIndCSV(){
   toast('📥 CSV descargado');
 }
 
+function printLiqIndividual(){
+  var w = db.trabajadores.find(function(x){ return x.id===_liqIndWorkerId; });
+  if(!w){ toast('⚠️ Selecciona un trabajador primero'); return; }
+  var d = document.getElementById('liq-ind-d').value;
+  var h = document.getElementById('liq-ind-h').value;
+  var jornadas = db.jornadas
+    .filter(function(j){ return j.workerId===_liqIndWorkerId && inRange(j.fecha,d,h); })
+    .sort(function(a,b){ return a.fecha.localeCompare(b.fecha); });
+  var totalPago  = jornadas.reduce(function(s,j){ return s+(j.pago||0); },0);
+  var totalHoras = jornadas.reduce(function(s,j){ return s+(j.horas||0); },0);
+  var totalBins  = jornadas.reduce(function(s,j){ return s+(j.paltaBins||0); },0);
+  var totalC1    = jornadas.reduce(function(s,j){ return s+(j.frutC1||0); },0);
+  var totalC2    = jornadas.reduce(function(s,j){ return s+(j.frutC2||0); },0);
+  var pagadas    = jornadas.filter(function(j){ return j.pagado; }).length;
+  var hoy        = new Date().toLocaleDateString('es-CL',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  var filas = jornadas.map(function(j,i){
+    return '<tr style="background:'+(i%2===0?'#fff':'#f9fafb')+'">'+
+      '<td>'+fmtDate(j.fecha)+'</td><td>'+(j.modo||'jornal')+'</td>'+
+      '<td style="text-align:right">'+(j.paltaBins||0)+'</td>'+
+      '<td style="text-align:right">'+(j.paltaKg||0)+'</td>'+
+      '<td style="text-align:right">'+(j.frutC1||0)+'</td>'+
+      '<td style="text-align:right">'+(j.frutC2||0)+'</td>'+
+      '<td style="text-align:right">'+(j.frutKg||0)+'</td>'+
+      '<td style="text-align:right">'+(j.horas||0)+'</td>'+
+      '<td style="text-align:center">'+(j.sector||'—')+'</td>'+
+      '<td style="text-align:right;font-weight:700">'+fmtMoney(j.pago||0)+'</td>'+
+      '<td style="text-align:center">'+(j.pagado?'PAGADO':'PENDIENTE')+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var css = [
+    '*{box-sizing:border-box;margin:0;padding:0}',
+    'body{font-family:Arial,sans-serif;font-size:12px;color:#1a1a18;padding:20px}',
+    '.hdr{display:flex;justify-content:space-between;margin-bottom:18px;padding-bottom:12px;border-bottom:3px solid #2d6a4f}',
+    '.logo{font-size:20px;font-weight:700;color:#1a3325}.logo span{font-size:10px;display:block;color:#666;font-weight:400}',
+    '.titulo{font-size:17px;font-weight:700;color:#2d6a4f;text-align:right}.titulo span{font-size:10px;color:#666;display:block;font-weight:400}',
+    '.wbox{background:#f0faf4;border:1px solid #b7e4c7;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;gap:20px}',
+    '.wbox .f{flex:1}.wbox .f label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#666}.wbox .f div{font-size:13px;font-weight:700;color:#1a3325;margin-top:2px}',
+    '.periodo{background:#e8f5e9;border:1px solid #a5d6a7;border-radius:6px;padding:7px 12px;margin-bottom:14px;font-size:11px;color:#2d6a4f;font-weight:600}',
+    '.summ{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-bottom:14px}',
+    '.sb{text-align:center;padding:8px;background:#f5f5f5;border-radius:6px;border:1px solid #ddd}',
+    '.sb .v{font-size:15px;font-weight:700;color:#1a3325}.sb .l{font-size:9px;color:#666;text-transform:uppercase}',
+    '.sb.tot{background:#1a3325;border-color:#1a3325}.sb.tot .v{color:#b7e4c7;font-size:16px}.sb.tot .l{color:#52b788}',
+    'table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:11px}',
+    'thead th{background:#1a3325;color:#b7e4c7;padding:8px 6px;text-align:left;font-size:9px;letter-spacing:.5px;text-transform:uppercase}',
+    'tbody td{padding:6px;border-bottom:1px solid #e5e7eb}',
+    'tfoot td{padding:8px 6px;background:#1a3325;color:#b7e4c7;font-weight:700}',
+    '.firma{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:28px;padding-top:18px;border-top:1px solid #ddd}',
+    '.fb{text-align:center}.fline{border-top:1px solid #333;margin-bottom:5px;margin-top:38px}.flbl{font-size:10px;color:#666}',
+    '.foot{margin-top:18px;font-size:9px;color:#999;text-align:center}',
+    '@media print{body{padding:10px}@page{margin:1.5cm}}'
+  ].join('');
+
+  var html = '<!DOCTYPE html>'+
+    '\x3chtml lang="es">\x3chead>\x3cmeta charset="UTF-8">'+
+    '\x3ctitle>Liquidación — '+w.nombre+'\x3c/title>'+
+    '\x3cstyle>'+css+'\x3c/style>\x3c/head>'+
+    '\x3cbody>'+
+    '\x3cdiv class="hdr">'+
+      '\x3cdiv class="logo">🌿 AgriTech\x3cspan>Gestión Agrícola v2.0 Pro\x3c/span>\x3c/div>'+
+      '\x3cdiv class="titulo">LIQUIDACIÓN DE PAGO\x3cspan>Generado el '+hoy+'\x3c/span>\x3c/div>'+
+    '\x3c/div>'+
+    '\x3cdiv class="wbox">'+
+      '\x3cdiv class="f">\x3clabel>Trabajador\x3c/label>\x3cdiv>'+w.nombre+'\x3c/div>\x3c/div>'+
+      '\x3cdiv class="f">\x3clabel>Cargo\x3c/label>\x3cdiv>'+(w.rol||'—')+'\x3c/div>\x3c/div>'+
+      '\x3cdiv class="f">\x3clabel>RUT / ID\x3c/label>\x3cdiv>'+(w.rut||'—')+'\x3c/div>\x3c/div>'+
+      '\x3cdiv class="f">\x3clabel>Teléfono\x3c/label>\x3cdiv>'+(w.tel||'—')+'\x3c/div>\x3c/div>'+
+    '\x3c/div>'+
+    '\x3cdiv class="periodo">📅 Período: '+fmtDate(d)+' al '+fmtDate(h)+'\x3c/div>'+
+    '\x3cdiv class="summ">'+
+      '\x3cdiv class="sb">\x3cdiv class="v">'+jornadas.length+'\x3c/div>\x3cdiv class="l">Jornadas\x3c/div>\x3c/div>'+
+      '\x3cdiv class="sb">\x3cdiv class="v">'+totalHoras+'h\x3c/div>\x3cdiv class="l">Horas\x3c/div>\x3c/div>'+
+      '\x3cdiv class="sb">\x3cdiv class="v">'+totalBins+'\x3c/div>\x3cdiv class="l">BINs palta\x3c/div>\x3c/div>'+
+      '\x3cdiv class="sb">\x3cdiv class="v">'+totalC1+'\x3c/div>\x3cdiv class="l">Cajas 1ra\x3c/div>\x3c/div>'+
+      '\x3cdiv class="sb">\x3cdiv class="v">'+totalC2+'\x3c/div>\x3cdiv class="l">Cajas 2da\x3c/div>\x3c/div>'+
+      '\x3cdiv class="sb tot">\x3cdiv class="v">'+fmtMoney(totalPago)+'\x3c/div>\x3cdiv class="l">TOTAL A PAGAR\x3c/div>\x3c/div>'+
+    '\x3c/div>'+
+    '\x3ctable>'+
+      '\x3cthead>\x3ctr>'+
+        '\x3cth>Fecha\x3c/th>\x3cth>Tipo\x3c/th>'+
+        '\x3cth style="text-align:right">BINs\x3c/th>\x3cth style="text-align:right">Plt Kg\x3c/th>'+
+        '\x3cth style="text-align:right">1ra\x3c/th>\x3cth style="text-align:right">2da\x3c/th>'+
+        '\x3cth style="text-align:right">Frt Kg\x3c/th>\x3cth style="text-align:right">Horas\x3c/th>'+
+        '\x3cth>Sector\x3c/th>\x3cth style="text-align:right">Pago\x3c/th>\x3cth>Estado\x3c/th>'+
+      '\x3c/tr>\x3c/thead>'+
+      '\x3ctbody>'+filas+'\x3c/tbody>'+
+      '\x3ctfoot>\x3ctr>'+
+        '\x3ctd>TOTAL ('+jornadas.length+' jornadas)\x3c/td>\x3ctd>\x3c/td>'+
+        '\x3ctd style="text-align:right">'+totalBins+'\x3c/td>'+
+        '\x3ctd style="text-align:right">'+jornadas.reduce(function(s,j){return s+(j.paltaKg||0);},0)+'\x3c/td>'+
+        '\x3ctd style="text-align:right">'+totalC1+'\x3c/td>\x3ctd style="text-align:right">'+totalC2+'\x3c/td>'+
+        '\x3ctd style="text-align:right">'+jornadas.reduce(function(s,j){return s+(j.frutKg||0);},0)+'\x3c/td>'+
+        '\x3ctd style="text-align:right">'+totalHoras+'\x3c/td>\x3ctd>\x3c/td>'+
+        '\x3ctd style="text-align:right;font-size:13px">'+fmtMoney(totalPago)+'\x3c/td>'+
+        '\x3ctd>'+pagadas+'/'+jornadas.length+' pag.\x3c/td>'+
+      '\x3c/tr>\x3c/tfoot>'+
+    '\x3c/table>'+
+    '\x3cdiv class="firma">'+
+      '\x3cdiv class="fb">\x3cdiv class="fline">\x3c/div>\x3cdiv class="flbl">Firma del Trabajador\x3c/div>\x3c/div>'+
+      '\x3cdiv class="fb">\x3cdiv class="fline">\x3c/div>\x3cdiv class="flbl">Firma del Administrador\x3c/div>\x3c/div>'+
+    '\x3c/div>'+
+    '\x3cdiv class="foot">AgriTech v2.0 Pro — Gestión Agrícola Integral\x3c/div>'+
+    '\x3cscript>window.onload=function(){window.print();}\x3c/script>'+
+    '\x3c/body>\x3c/html>';
+
+  var ventana = window.open('','_blank','width=900,height=700');
+  if(!ventana){ toast('⚠️ Permite ventanas emergentes para este sitio e intenta de nuevo'); return; }
+  ventana.document.write(html);
+  ventana.document.close();
+  toast('🖨️ Preparando impresión...');
+}
+
 // ========== INIT ==========
 function init(){
   console.log('INIT START');
