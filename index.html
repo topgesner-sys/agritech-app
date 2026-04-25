@@ -1944,14 +1944,47 @@ textarea{resize:vertical;min-height:72px}
     <div id="users-lista" style="margin-bottom:16px"></div>
     <div style="padding:14px;background:#f0faf4;border-radius:10px;border:1px solid var(--border)">
       <div style="font-weight:700;font-size:.88rem;color:var(--green-deep);margin-bottom:10px">➕ Generar código de invitación</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <input type="text" id="inv-new-nombre" placeholder="Nombre del invitado (ej: Mi patrón)" style="flex:1;min-width:160px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div class="form-group">
+          <label>Nombre del invitado *</label>
+          <input type="text" id="inv-new-nombre" placeholder="Ej: Juan Pérez / Mi patrón">
+        </div>
+        <div class="form-group">
+          <label>Duración del acceso *</label>
+          <select id="inv-duracion" onchange="toggleDuracionCustom()">
+            <option value="7">7 días (prueba)</option>
+            <option value="15">15 días</option>
+            <option value="30">1 mes</option>
+            <option value="90">3 meses</option>
+            <option value="180">6 meses</option>
+            <option value="365">1 año</option>
+            <option value="0">Sin límite de tiempo</option>
+            <option value="custom">⚙️ Personalizado...</option>
+          </select>
+        </div>
+        <div class="form-group" id="div-duracion-custom" style="display:none">
+          <label>Días personalizados</label>
+          <input type="number" id="inv-duracion-custom" placeholder="Ej: 45" min="1" max="3650">
+        </div>
+        <div class="form-group">
+          <label>Rol del usuario</label>
+          <select id="inv-new-rol">
+            <option value="usuario">👤 Usuario — puede ingresar y ver datos</option>
+            <option value="visor">👁️ Visor — solo puede ver, no ingresar</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end">
         <button class="btn btn-primary" onclick="generarInvitacion()">🔗 Generar Código</button>
       </div>
-      <div id="inv-resultado" style="margin-top:12px;display:none">
-        <div style="padding:10px 14px;background:#1a3325;border-radius:8px;font-family:monospace;color:#b7e4c7;font-size:1.1rem;letter-spacing:3px;text-align:center" id="inv-codigo-display"></div>
-        <div style="font-size:.75rem;color:var(--text-muted);margin-top:6px;text-align:center">⏱️ Este código expira en 24 horas y es de un solo uso</div>
-        <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px" onclick="copiarCodigo()">📋 Copiar código</button>
+      <div id="inv-resultado" style="margin-top:12px;display:none;background:#1a3325;border-radius:10px;padding:14px">
+        <div style="font-size:.72rem;color:#52b788;text-align:center;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">Código de Invitación</div>
+        <div style="font-family:monospace;color:#b7e4c7;font-size:1.3rem;letter-spacing:4px;text-align:center;background:rgba(255,255,255,.08);padding:10px;border-radius:6px" id="inv-codigo-display"></div>
+        <div style="font-size:.72rem;color:#52b788;margin-top:8px;text-align:center" id="inv-resultado-info"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-secondary btn-sm" style="flex:1" onclick="copiarCodigo()">📋 Copiar</button>
+          <button class="btn btn-secondary btn-sm" style="flex:1" onclick="compartirCodigo()">📤 Compartir</button>
+        </div>
       </div>
     </div>
     <div class="form-actions">
@@ -4914,9 +4947,11 @@ function doJoinWithCode(){
         return _db.collection('usuarios').doc(uid).set({
           nombre: nombre,
           email: email,
-          rol: 'usuario',
+          rol: inv.rol || 'usuario',
           fundoId: fundoId,
           invitadoPor: inv.creadoPor,
+          duracionDias: inv.duracionDias || 0,
+          expiraAcceso: inv.expiraAcceso || null,
           creadoEn: new Date().toISOString()
         }).then(function(){
           // Mark invitation as used
@@ -4961,6 +4996,24 @@ function onLoginSuccess(user){
         .then(function(){ console.log('Perfil admin creado'); })
         .catch(function(e){ console.warn('Error creando perfil:', e); });
       updateSidebarUser(adminProfile.nombre, true);
+    }
+    // Check if access has expired
+    if(doc.exists && doc.data().expiraAcceso){
+      var expira = new Date(doc.data().expiraAcceso);
+      var ahora = new Date();
+      if(expira < ahora){
+        // Access expired - show message and logout
+        _auth.signOut();
+        var modal = document.getElementById('modal-login');
+        if(modal){ modal.style.display='flex'; modal.style.alignItems='center'; modal.style.justifyContent='center'; modal.classList.add('open'); }
+        var errEl = document.getElementById('login-error');
+        if(errEl){ 
+          errEl.style.display='block'; 
+          errEl.textContent='⏰ Tu acceso expiró el '+expira.toLocaleDateString('es-CL')+'. Contacta al administrador.';
+        }
+        showPanel('panel-login');
+        return;
+      }
     }
     hideLoginModal();
     showSyncStatus('⏳ Cargando datos...', '#3b82f6');
@@ -5015,37 +5068,86 @@ function useWithoutLogin(){
 }
 
 // ---- GENERATE INVITATION CODE ----
+function toggleDuracionCustom(){
+  var sel = document.getElementById('inv-duracion');
+  var custom = document.getElementById('div-duracion-custom');
+  if(sel && custom) custom.style.display = sel.value === 'custom' ? 'block' : 'none';
+}
+
 function generarInvitacion(){
   if(!_isAdmin){ toast('⚠️ Solo el administrador puede generar invitaciones'); return; }
-  var nombre=document.getElementById('inv-new-nombre').value.trim();
+  var nombre = document.getElementById('inv-new-nombre').value.trim();
   if(!nombre){ toast('⚠️ Ingresa el nombre del invitado'); return; }
 
+  // Get duration
+  var durSel = document.getElementById('inv-duracion');
+  var duracion = parseInt(durSel ? durSel.value : 7);
+  if(durSel && durSel.value === 'custom'){
+    duracion = parseInt(document.getElementById('inv-duracion-custom').value) || 7;
+  }
+  var rol = document.getElementById('inv-new-rol') ? document.getElementById('inv-new-rol').value : 'usuario';
+
+  // Calculate expiry for CODE (always 48h to use it)
+  var expiraCodigo = new Date();
+  expiraCodigo.setHours(expiraCodigo.getHours() + 48);
+
+  // Calculate access expiry (when user's access ends)
+  var expiraAcceso = null;
+  var expiraAccesoStr = 'Sin límite';
+  if(duracion > 0){
+    expiraAcceso = new Date();
+    expiraAcceso.setDate(expiraAcceso.getDate() + duracion);
+    expiraAccesoStr = expiraAcceso.toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'});
+  }
+
   // Generate unique code
-  var chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  var code='';
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var code = '';
   for(var i=0;i<12;i++){
     if(i===4||i===8) code+='-';
     code+=chars.charAt(Math.floor(Math.random()*chars.length));
   }
 
-  var expira=new Date();
-  expira.setHours(expira.getHours()+24);
-
-  _db.collection('invitaciones').doc(code).set({
+  var invData = {
     fundoId: _fundoId,
     creadoPor: _userId,
     nombreInvitado: nombre,
+    rol: rol,
+    duracionDias: duracion,
+    expiraAcceso: expiraAcceso ? expiraAcceso.toISOString() : null,
     creadoEn: new Date().toISOString(),
-    expira: expira.toISOString(),
+    expira: expiraCodigo.toISOString(), // code expires in 48h
     usado: false
-  }).then(function(){
-    document.getElementById('inv-codigo-display').textContent=code;
-    document.getElementById('inv-resultado').style.display='block';
+  };
+
+  _db.collection('invitaciones').doc(code).set(invData).then(function(){
+    document.getElementById('inv-codigo-display').textContent = code;
+    document.getElementById('inv-resultado').style.display = 'block';
+    
+    // Show info
+    var infoEl = document.getElementById('inv-resultado-info');
+    if(infoEl){
+      var durLabel = duracion===0 ? 'Sin límite de tiempo' : duracion+' días (hasta el '+expiraAccesoStr+')';
+      var rolLabel = rol==='visor' ? '👁️ Solo lectura' : '👤 Puede ingresar datos';
+      infoEl.innerHTML = '⏱️ Código válido 48h para activar · 👤 '+nombre+' · '+durLabel+'<br>'+rolLabel;
+    }
+    
     document.getElementById('inv-new-nombre').value='';
-    // Refresh user list
     renderUsersPanel();
-    toast('✅ Código generado para '+nombre);
-  }).catch(function(e){ toast('Error: '+e.message); });
+    toast('✅ Código generado para '+nombre+' ('+duracion+(duracion===0?' días':' días')+')');
+  }).catch(function(e){ toast('❌ Error: '+e.message); });
+}
+
+function compartirCodigo(){
+  var code = document.getElementById('inv-codigo-display').textContent;
+  var info = document.getElementById('inv-resultado-info') ? document.getElementById('inv-resultado-info').textContent : '';
+  var texto = '🌿 AgriTech — Código de invitación\n\nCódigo: '+code+'\n'+info+'\n\nIngresa en: '+window.location.origin;
+  if(navigator.share){
+    navigator.share({ title:'AgriTech Invitación', text:texto })
+      .catch(function(){ navigator.clipboard.writeText(texto).then(function(){ toast('📋 Copiado para compartir'); }); });
+  } else {
+    navigator.clipboard.writeText(texto).then(function(){ toast('📋 Mensaje copiado — pégalo en WhatsApp o email'); });
+  }
 }
 
 function copiarCodigo(){
@@ -5071,10 +5173,28 @@ function renderUsersPanel(){
       var u=doc.data();
       var esAdmin=u.rol==='admin';
       var esYo=doc.id===_userId;
-      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:'+(esAdmin?'#f0faf4':'#f9f9f9')+';border-radius:8px;margin-bottom:8px;border:1px solid var(--border)">';
+      // Check if access expired or expiring soon
+      var accessStatus = '';
+      var rowBg = esAdmin ? '#f0faf4' : '#f9f9f9';
+      if(!esAdmin && u.expiraAcceso){
+        var expiraDate = new Date(u.expiraAcceso);
+        var diasRestantes = Math.ceil((expiraDate - new Date()) / 86400000);
+        if(diasRestantes < 0){
+          accessStatus = '<span style="background:#fde8e8;color:#b91c1c;padding:2px 6px;border-radius:4px;font-size:.68rem;margin-left:4px">⏰ Expirado</span>';
+          rowBg = '#fff5f5';
+        } else if(diasRestantes <= 7){
+          accessStatus = '<span style="background:#fef3cd;color:#856404;padding:2px 6px;border-radius:4px;font-size:.68rem;margin-left:4px">⚠️ Expira en '+diasRestantes+'d</span>';
+          rowBg = '#fffbeb';
+        } else {
+          accessStatus = '<span style="font-size:.68rem;color:var(--text-muted);margin-left:4px">Hasta '+expiraDate.toLocaleDateString('es-CL')+'</span>';
+        }
+      } else if(!esAdmin && !u.expiraAcceso){
+        accessStatus = '<span style="font-size:.68rem;color:#52b788;margin-left:4px">∞ Sin límite</span>';
+      }
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:'+rowBg+';border-radius:8px;margin-bottom:8px;border:1px solid var(--border)">';
       html+='<div>';
-      html+='<div style="font-weight:700;font-size:.88rem;color:var(--green-deep)">'+(u.nombre||u.email)+(esYo?' (tú)':'')+'</div>';
-      html+='<div style="font-size:.73rem;color:var(--text-muted)">'+u.email+' · <span class="badge '+(esAdmin?'badge-green':'badge-blue')+'">'+(esAdmin?'Administrador':'Usuario')+'</span></div>';
+      html+='<div style="font-weight:700;font-size:.88rem;color:var(--green-deep)">'+(u.nombre||u.email)+(esYo?' (tú)':'')+accessStatus+'</div>';
+      html+='<div style="font-size:.73rem;color:var(--text-muted)">'+u.email+' · <span class="badge '+(esAdmin?'badge-green':(u.rol==='visor'?'badge-gray':'badge-blue'))+'">'+(esAdmin?'Administrador':(u.rol==='visor'?'Visor':'Usuario'))+'</span></div>';
       html+='</div>';
       if(!esAdmin&&!esYo){
         html+='<button class="btn btn-danger btn-sm" data-uid="'+doc.id+'" data-nombre="'+u.nombre+'" onclick="revocarAcceso(this.dataset.uid,this.dataset.nombre)">Revocar</button>';
@@ -5086,6 +5206,23 @@ function renderUsersPanel(){
 }
 
 // ---- REVOKE ACCESS ----
+function extenderAcceso(uid, nombre){
+  var dias = prompt('¿Cuántos días quieres extender el acceso de '+nombre+'?\n(Ejemplo: 30 para un mes, 0 para sin límite)', '30');
+  if(dias === null) return;
+  dias = parseInt(dias);
+  var expiraAcceso = null;
+  if(dias > 0){
+    expiraAcceso = new Date();
+    expiraAcceso.setDate(expiraAcceso.getDate() + dias);
+  }
+  _db.collection('usuarios').doc(uid).update({ expiraAcceso: expiraAcceso ? expiraAcceso.toISOString() : null })
+    .then(function(){
+      var msg = dias===0 ? 'Acceso sin límite' : 'Acceso extendido '+dias+' días más';
+      toast('✅ '+msg+' para '+nombre);
+      renderUsersPanel();
+    }).catch(function(e){ toast('Error: '+e.message); });
+}
+
 function revocarAcceso(uid, nombre){
   if(!confirm('¿Revocar acceso a '+nombre+'? No podrá volver a ingresar a menos que lo invites de nuevo.')) return;
   _db.collection('usuarios').doc(uid).delete().then(function(){
