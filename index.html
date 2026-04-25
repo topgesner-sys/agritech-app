@@ -2263,17 +2263,19 @@ const _store = {
   get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
   set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 };
-// Initialize empty - data will come from Firebase
-KEYS.forEach(k => { db[k] = []; });
+// Initialize from localStorage first (instant), Firebase will sync on top
+KEYS.forEach(k => { 
+  try { db[k] = JSON.parse(_store.get('agt2_'+k)||'[]'); } 
+  catch(e){ db[k]=[]; } 
+});
 
 function save(k){ 
-  // Always sync to cloud if connected (Firebase is primary source of truth)
+  // ALWAYS save to localStorage for instant persistence (survives reload)
+  try { _store.set('agt2_'+k, JSON.stringify(db[k])); } catch(e){}
+  // ALSO sync to Firebase if connected (for cross-device sync)
   if(_syncEnabled && _fundoId){
     clearTimeout(window['_syncTimer_'+k]);
-    window['_syncTimer_'+k] = setTimeout(function(){ syncToCloud(k); }, 800);
-  } else {
-    // Only use localStorage if not connected to cloud
-    try { _store.set('agt2_'+k, JSON.stringify(db[k])); } catch(e){}
+    window['_syncTimer_'+k] = setTimeout(function(){ syncToCloud(k); }, 1000);
   }
 }
 function genId(arr){ return arr.length ? Math.max(...arr.map(x=>x.id))+1 : 1; }
@@ -4840,11 +4842,7 @@ function doJoinWithCode(){
 // ---- ON LOGIN SUCCESS ----
 function onLoginSuccess(user){
   _userId=user.uid;
-  // Clear any stale local data before loading from cloud
-  KEYS.forEach(function(k){ 
-    try { localStorage.removeItem('agt2_'+k); } catch(e){}
-    db[k] = [];
-  });
+  // Keep localStorage data as fallback while Firebase loads
   _db.collection('usuarios').doc(user.uid).get().then(function(doc){
     if(doc.exists){
       var perfil=doc.data();
