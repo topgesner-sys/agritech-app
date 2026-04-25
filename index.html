@@ -563,7 +563,7 @@ textarea{resize:vertical;min-height:72px}
     <div class="filter-bar">
       <input type="text" id="f-inv-q" placeholder="🔍 Buscar..." oninput="renderInventario()">
       <select id="f-inv-cat" onchange="renderInventario()">
-        <option value="">Todas</option><option value="Semilla">Semilla</option><option value="Herramienta">Herramienta</option><option value="Envase">Envase</option><option value="Insumo">Insumo</option><option value="Otro">Otro</option>
+        <option value="">Todas</option><option value="Semilla">Semilla</option><option value="Plantas">Plantas</option><option value="Herramienta">Herramienta</option><option value="Envase">Envase</option><option value="Insumo">Insumo</option><option value="Otro">Otro</option>
       </select>
       <button class="btn btn-secondary btn-sm" onclick="clearF('inv')">✕</button>
     </div>
@@ -1271,7 +1271,16 @@ textarea{resize:vertical;min-height:72px}
   <div class="form-grid">
     <div class="form-group"><label>Producto *</label><input type="text" id="inv-nom" placeholder="Nombre del producto"></div>
     <div class="form-group"><label>Categoría</label>
-      <select id="inv-cat"><option>Semilla</option><option>Herramienta</option><option>Envase</option><option>Insumo</option><option>Otro</option></select>
+      <select id="inv-cat" onchange="toggleCatOtro('inv-cat','inv-cat-otro')">
+        <option>Semilla</option>
+        <option>Plantas</option>
+        <option>Herramienta</option>
+        <option>Envase</option>
+        <option>Insumo</option>
+        <option>Otro</option>
+        <option value="__custom__">➕ Agregar categoría...</option>
+      </select>
+      <input type="text" id="inv-cat-otro" placeholder="Nombre de la categoría" style="display:none;margin-top:6px">
     </div>
     <div class="form-group"><label>Cantidad *</label><input type="number" id="inv-cant" placeholder="0" min="0"></div>
     <div class="form-group"><label>Stock mínimo</label><input type="number" id="inv-min" placeholder="0" min="0"></div>
@@ -1488,7 +1497,15 @@ textarea{resize:vertical;min-height:72px}
   <div class="form-grid">
     <div class="form-group"><label>Descripción *</label><input type="text" id="ct-desc" placeholder="Ej: Compra fertilizante"></div>
     <div class="form-group"><label>Categoría</label>
-      <select id="ct-cat"><option>Mano de obra</option><option>Insumos</option><option>Maquinaria</option><option>Transporte</option><option>Otros</option></select>
+      <select id="ct-cat" onchange="toggleCatOtro('ct-cat','ct-cat-otro')">
+      <option>Mano de obra</option>
+      <option>Insumos</option>
+      <option>Maquinaria</option>
+      <option>Transporte</option>
+      <option>Otros</option>
+      <option value="__custom__">➕ Agregar categoría...</option>
+    </select>
+    <input type="text" id="ct-cat-otro" placeholder="Nombre de la categoría" style="display:none;margin-top:6px">
     </div>
     <div class="form-group"><label>Monto ($) *</label><input type="number" id="ct-monto" placeholder="0" min="0"></div>
     <div class="form-group"><label>Fecha *</label><input type="date" id="ct-fecha"></div>
@@ -2167,7 +2184,7 @@ function mono(v){ return `<span class="mono">${v}</span>`; }
 const BADGE = {
   Palta:'badge-green',Frutilla:'badge-amber',Otro:'badge-gray',
   Fertilizante:'badge-blue',Pesticida:'badge-red',Herbicida:'badge-amber',Fungicida:'badge-purple',
-  Semilla:'badge-green',Herramienta:'badge-blue',Envase:'badge-amber',Insumo:'badge-purple',
+  Semilla:'badge-green',Plantas:'badge-teal',Herramienta:'badge-blue',Envase:'badge-amber',Insumo:'badge-purple',
   Activo:'badge-green',Inactivo:'badge-red',Vendido:'badge-amber',Fallecido:'badge-gray',
   Pendiente:'badge-amber','En progreso':'badge-blue',Completado:'badge-green',
   Cosecha:'badge-green',Poda:'badge-purple',Riego:'badge-blue',
@@ -2469,7 +2486,7 @@ function saveInventario(){
   const nom=document.getElementById('inv-nom').value;
   const cant=parseFloat(document.getElementById('inv-cant').value);
   if(!nom||isNaN(cant)){ toast('⚠️ Nombre y cantidad requeridos'); return; }
-  db.inventario.push({id:genId(db.inventario),nombre:nom,cat:document.getElementById('inv-cat').value,cantidad:cant,minimo:parseFloat(document.getElementById('inv-min').value)||0,unidad:document.getElementById('inv-unidad').value,proveedor:document.getElementById('inv-prov').value||'—',fecha:document.getElementById('inv-fecha').value||today()});
+  db.inventario.push({id:genId(db.inventario),nombre:nom,cat:getCatValue('inv-cat','inv-cat-otro'),cantidad:cant,minimo:parseFloat(document.getElementById('inv-min').value)||0,unidad:document.getElementById('inv-unidad').value,proveedor:document.getElementById('inv-prov').value||'—',fecha:document.getElementById('inv-fecha').value||today()});
   save('inventario'); closeModal('modal-inventario');
   ['inv-nom','inv-cant','inv-min','inv-prov','inv-fecha'].forEach(i=>document.getElementById(i).value='');
   toast('✅ Producto agregado'); renderDashboard(); renderInventario(); checkAlertas();
@@ -2692,7 +2709,7 @@ function saveCosto(){
   const monto=parseFloat(document.getElementById('ct-monto').value);
   const fecha=document.getElementById('ct-fecha').value;
   if(!desc||!monto||!fecha){ toast('⚠️ Completa los campos requeridos'); return; }
-  db.costos.push({id:genId(db.costos),desc,cat:document.getElementById('ct-cat').value,monto,fecha,obs:document.getElementById('ct-obs').value});
+  db.costos.push({id:genId(db.costos),desc,cat:getCatValue('ct-cat','ct-cat-otro'),monto,fecha,obs:document.getElementById('ct-obs').value});
   save('costos'); closeModal('modal-costo');
   ['ct-desc','ct-monto','ct-fecha','ct-obs'].forEach(i=>document.getElementById(i).value='');
   toast('✅ Gasto registrado'); renderDashboard(); renderCostos();
@@ -2778,6 +2795,30 @@ function toastUndo(msg){
     t.classList.remove('show');
     if(btn) btn.style.display = 'none';
   }, 6000);
+}
+
+// ========== CUSTOM CATEGORY HELPER ==========
+function toggleCatOtro(selectId, inputId){
+  var sel = document.getElementById(selectId);
+  var inp = document.getElementById(inputId);
+  if(!sel || !inp) return;
+  if(sel.value === '__custom__'){
+    inp.style.display = 'block';
+    inp.focus();
+  } else {
+    inp.style.display = 'none';
+  }
+}
+
+function getCatValue(selectId, inputId){
+  var sel = document.getElementById(selectId);
+  var inp = document.getElementById(inputId);
+  if(!sel) return '';
+  if(sel.value === '__custom__'){
+    var custom = inp ? inp.value.trim() : '';
+    return custom || 'Otro';
+  }
+  return sel.value;
 }
 
 // ========== FILTERS ==========
