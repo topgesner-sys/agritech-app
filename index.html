@@ -4772,14 +4772,34 @@ function showLoginModal(){
 
 // ---- LOGIN (existing users) ----
 function doLogin(){
-  var email=document.getElementById('login-email').value.trim();
-  var pass=document.getElementById('login-pass').value;
-  var errEl=document.getElementById('login-error');
-  if(!email||!pass){ errEl.style.display='block'; errEl.textContent='Ingresa correo y contraseña'; return; }
+  var email = document.getElementById('login-email').value.trim();
+  var pass = document.getElementById('login-pass').value;
+  var errEl = document.getElementById('login-error');
+  var btn = document.querySelector('#panel-login .btn-primary');
+
+  if(!email||!pass){ 
+    errEl.style.display='block'; 
+    errEl.textContent='Ingresa correo y contraseña'; 
+    return; 
+  }
   errEl.style.display='none';
+
+  // Show loading state on button
+  if(btn){ btn.textContent='⏳ Ingresando...'; btn.disabled=true; }
+
   _auth.signInWithEmailAndPassword(email, pass)
-    .then(function(cred){ onLoginSuccess(cred.user); })
-    .catch(function(e){ errEl.style.display='block'; errEl.textContent=authErrMsg(e.code); });
+    .then(function(cred){ 
+      // Hide modal IMMEDIATELY on success
+      hideLoginModal();
+      if(btn){ btn.textContent='🔐 Ingresar'; btn.disabled=false; }
+      onLoginSuccess(cred.user); 
+    })
+    .catch(function(e){ 
+      // Show error and re-enable button
+      errEl.style.display='block'; 
+      errEl.textContent=authErrMsg(e.code); 
+      if(btn){ btn.textContent='🔐 Ingresar'; btn.disabled=false; }
+    });
 }
 
 // ---- REGISTER ADMIN ----
@@ -4800,7 +4820,10 @@ function doRegister(){
         rol: 'admin',
         fundoId: uid, // admin's own UID is the fundo ID
         creadoEn: new Date().toISOString()
-      }).then(function(){ onLoginSuccess(cred.user); });
+      }).then(function(){ 
+          hideLoginModal();
+          onLoginSuccess(cred.user); 
+        });
     })
     .catch(function(e){ errEl.style.display='block'; errEl.textContent=authErrMsg(e.code); });
 }
