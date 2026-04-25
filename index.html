@@ -449,6 +449,7 @@ textarea{resize:vertical;min-height:72px}
       <div>
         <div class="user-name">Administrador</div>
         <div class="user-role" id="user-email-display">Fundo Principal</div>
+        <div style="font-size:.6rem;color:rgba(183,228,199,.5);margin-top:2px;font-family:monospace" id="fundo-id-display"></div>
       </div>
     </div>
     <div id="btn-admin-users" style="display:none">
@@ -2181,8 +2182,12 @@ function loadFromCloud(){
         if(loadedCount >= totalKeys){
           showSyncStatus('🔴 En vivo', '#52b788');
           renderDashboard();
-          if(loadedCount === totalKeys){
-            toast('☁️ Sincronización en tiempo real activada');
+          // Also refresh current view
+          var activeView = document.querySelector('.view.active');
+          if(activeView){
+            var vid = activeView.id.replace('view-','');
+            var renders2 = {trabajadores:renderTrabajadores, cosechas:renderCosechas, liquidaciones:renderLiquidaciones};
+            if(renders2[vid]) try{ renders2[vid](); }catch(e){}
           }
         }
       }, function(err){
@@ -4851,11 +4856,14 @@ function onLoginSuccess(user){
       _syncEnabled=true;
       // Update UI
       var nameEl=document.getElementById('user-email-display');
-      if(nameEl) nameEl.textContent=perfil.nombre||user.email;
+      if(nameEl) nameEl.textContent=(perfil.nombre||user.email)+' ('+(_isAdmin?'Admin':'Usuario')+')';
       var avatarEl=document.getElementById('user-avatar-letter');
       if(avatarEl) avatarEl.textContent=(perfil.nombre||user.email).charAt(0).toUpperCase();
       var adminBtn=document.getElementById('btn-admin-users');
       if(adminBtn) adminBtn.style.display=_isAdmin?'block':'none';
+      // Show fundoId for debugging sync issues
+      var fundoDisplay=document.getElementById('fundo-id-display');
+      if(fundoDisplay) fundoDisplay.textContent='ID: '+_fundoId.substring(0,8)+'...';
     } else {
       // First time admin login (no profile yet) - create it
       _fundoId=user.uid;
@@ -4870,6 +4878,8 @@ function onLoginSuccess(user){
       });
       var adminBtn=document.getElementById('btn-admin-users');
       if(adminBtn) adminBtn.style.display='block';
+      var fundoDisplay=document.getElementById('fundo-id-display');
+      if(fundoDisplay) fundoDisplay.textContent='ID: '+_fundoId.substring(0,8)+'...';
     }
     hideLoginModal();
     showSyncStatus('☁️ Conectado', '#52b788');
