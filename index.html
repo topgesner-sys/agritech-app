@@ -1302,7 +1302,7 @@ textarea{resize:vertical;min-height:72px}
 <!-- TRABAJADOR -->
 <div class="modal-backdrop" id="modal-trabajador">
 <div class="modal" style="max-width:680px">
-  <div class="modal-title">👷 Registrar Trabajador</div>
+  <div class="modal-title" id="modal-trab-title">👷 Registrar Trabajador</div>
   <div class="form-grid">
     <div class="form-group"><label>Nombre completo *</label><input type="text" id="w-nom" placeholder="Juan Pérez"></div>
     <div class="form-group"><label>RUT / ID</label><input type="text" id="w-rut" placeholder="12.345.678-9"></div>
@@ -1333,7 +1333,7 @@ textarea{resize:vertical;min-height:72px}
   </div>
   <div class="form-actions">
     <button class="btn btn-secondary" onclick="closeModal('modal-trabajador')">Cancelar</button>
-    <button class="btn btn-primary" onclick="saveTrabajador()">💾 Guardar</button>
+    <button class="btn btn-primary" onclick="saveTrabajador()" id="btn-save-trabajador">💾 Guardar</button>
   </div>
 </div>
 </div>
@@ -2065,6 +2065,61 @@ textarea{resize:vertical;min-height:72px}
     </div>
   </div>
   <div class="form-actions"><button class="btn btn-secondary" onclick="closeModal('modal-comprador')">Cerrar</button></div>
+</div>
+</div>
+
+<!-- MODAL: LIQUIDACIÓN INDIVIDUAL -->
+<div class="modal-backdrop" id="modal-liq-individual">
+<div class="modal" style="max-width:900px">
+  <div class="modal-title" id="liq-ind-title">💰 Liquidación Individual</div>
+  
+  <!-- Worker info header -->
+  <div id="liq-ind-worker-info" style="display:flex;align-items:center;gap:14px;padding:14px;background:#f0faf4;border-radius:10px;margin-bottom:16px;border:1px solid var(--border)"></div>
+  
+  <!-- Date filter -->
+  <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:#f9f9f9;border-radius:8px;border:1px solid var(--border)">
+    <div class="form-group" style="flex:1;min-width:130px"><label>Desde</label><input type="date" id="liq-ind-d" onchange="calcLiqIndividual()"></div>
+    <div class="form-group" style="flex:1;min-width:130px"><label>Hasta</label><input type="date" id="liq-ind-h" onchange="calcLiqIndividual()"></div>
+    <button class="btn btn-secondary btn-sm" onclick="setLiqIndRange('semana')">Esta semana</button>
+    <button class="btn btn-secondary btn-sm" onclick="setLiqIndRange('quincena')">Quincena</button>
+    <button class="btn btn-secondary btn-sm" onclick="setLiqIndRange('mes')">Este mes</button>
+    <button class="btn btn-secondary btn-sm" onclick="setLiqIndRange('mes-ant')">Mes anterior</button>
+    <button class="btn btn-primary btn-sm" onclick="calcLiqIndividual()">🔄 Calcular</button>
+  </div>
+
+  <!-- Summary strip -->
+  <div id="liq-ind-summary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:16px"></div>
+
+  <!-- Excel-style table -->
+  <div style="overflow-x:auto;border:2px solid var(--border);border-radius:8px">
+    <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+      <thead>
+        <tr style="background:#1a3325;color:#b7e4c7">
+          <th style="padding:10px 12px;text-align:left;font-size:.72rem;letter-spacing:1px">FECHA</th>
+          <th style="padding:10px 12px;text-align:left;font-size:.72rem;letter-spacing:1px">TIPO</th>
+          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">PALTA BINs</th>
+          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">PALTA KG</th>
+          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">FRUT 1RA</th>
+          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">FRUT 2DA</th>
+          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">FRUT KG</th>
+          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">HORAS</th>
+          <th style="padding:10px 12px;text-align:center;font-size:.72rem;letter-spacing:1px">SECTOR</th>
+          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px;background:#2d6a4f">PAGO</th>
+          <th style="padding:10px 12px;text-align:center;font-size:.72rem;letter-spacing:1px">ESTADO</th>
+        </tr>
+      </thead>
+      <tbody id="liq-ind-tabla"></tbody>
+      <tfoot id="liq-ind-totals"></tfoot>
+    </table>
+  </div>
+
+  <!-- Actions -->
+  <div class="form-actions" style="margin-top:16px">
+    <button class="btn btn-secondary" onclick="closeModal('modal-liq-individual')">Cerrar</button>
+    <button class="btn btn-secondary" onclick="exportLiqIndCSV()">📥 Descargar CSV</button>
+    <button class="btn btn-secondary" onclick="printLiqIndividual()">🖨️ Imprimir</button>
+    <button class="btn btn-primary" onclick="marcarTodosLiqInd()">✅ Marcar todo pagado</button>
+  </div>
 </div>
 </div>
 
@@ -3124,7 +3179,11 @@ function renderTrabajadores(){
         <div class="worker-stat"><div class="worker-stat-val">${horas}</div><div class="worker-stat-lbl">Horas</div></div>
         <div class="worker-stat"><div class="worker-stat-val">${fmtMoney(pago).replace('$','$')}</div><div class="worker-stat-lbl">Total</div></div>
       </div>
-      <button class="btn btn-danger btn-sm" style="margin-top:10px;width:100%" onclick="del('trabajadores',${w.id},renderTrabajadores)">Eliminar</button>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="editTrabajador(${w.id})">✏️ Editar</button>
+        <button class="btn btn-danger btn-sm" style="flex:1" onclick="del('trabajadores',${w.id},renderTrabajadores)">🗑 Eliminar</button>
+      </div>
+      <button class="btn btn-primary btn-sm" style="width:100%;margin-top:6px" onclick="verLiquidacionIndividual(${w.id})">💰 Ver Liquidación</button>
     </div>`;
   }).join('');
   if(!db.trabajadores.length){
@@ -5423,6 +5482,277 @@ function setLiqRange(tipo){
   else if(tipo==='mes'){ document.getElementById('liq-d').value=f(new Date(now.getFullYear(),now.getMonth(),1)); document.getElementById('liq-h').value=f(new Date(now.getFullYear(),now.getMonth()+1,0)); }
   else if(tipo==='mes-ant'){ document.getElementById('liq-d').value=f(new Date(now.getFullYear(),now.getMonth()-1,1)); document.getElementById('liq-h').value=f(new Date(now.getFullYear(),now.getMonth(),0)); }
   renderLiquidaciones();
+}
+
+// ========== EDITAR TRABAJADOR ==========
+var _editingWorkerId = null;
+
+function editTrabajador(id){
+  var w = db.trabajadores.find(function(x){ return x.id===id; });
+  if(!w) return;
+  _editingWorkerId = id;
+  // Fill form with worker data
+  var set = function(elId, val){ var el=document.getElementById(elId); if(el) el.value=val||''; };
+  set('w-nom', w.nombre);
+  set('w-rut', w.rut);
+  set('w-tel', w.tel);
+  set('w-estado', w.estado);
+  // Set rol select
+  var rolEl = document.getElementById('w-rol');
+  if(rolEl) rolEl.value = w.rol || 'Temporero';
+  // Set tarifas
+  set('w-tarifa', w.tarifa);
+  set('w-tarifa-dia', w.tarifaDia);
+  set('w-t-palta-bin', w.tPaltaBin);
+  set('w-t-palta-kg', w.tPaltaKg);
+  set('w-t-frut-c1', w.tFrutC1);
+  set('w-t-frut-c2', w.tFrutC2);
+  set('w-t-frut-kg', w.tFrutKg);
+  // Update modal title
+  var title = document.getElementById('modal-trab-title');
+  if(title) title.textContent = '✏️ Editar Trabajador: '+w.nombre;
+  var btn = document.getElementById('btn-save-trabajador');
+  if(btn) btn.textContent = '💾 Guardar cambios';
+  openModal('modal-trabajador');
+}
+
+// Override saveTrabajador to handle edit mode
+var _originalSaveTrabajador = null;
+
+function saveTrabajador(){
+  var nom = document.getElementById('w-nom').value.trim();
+  if(!nom){ toast('⚠️ Nombre requerido'); return; }
+  
+  if(_editingWorkerId){
+    // EDIT MODE - update existing worker
+    var idx = db.trabajadores.findIndex(function(x){ return x.id===_editingWorkerId; });
+    if(idx >= 0){
+      db.trabajadores[idx].nombre = nom;
+      db.trabajadores[idx].rut = document.getElementById('w-rut').value;
+      db.trabajadores[idx].rol = document.getElementById('w-rol').value;
+      db.trabajadores[idx].tel = document.getElementById('w-tel').value;
+      db.trabajadores[idx].estado = document.getElementById('w-estado').value;
+      db.trabajadores[idx].tarifa = parseFloat(document.getElementById('w-tarifa').value)||0;
+      db.trabajadores[idx].tarifaDia = parseFloat(document.getElementById('w-tarifa-dia')?document.getElementById('w-tarifa-dia').value:0)||0;
+      db.trabajadores[idx].tPaltaBin = parseFloat(document.getElementById('w-t-palta-bin')?document.getElementById('w-t-palta-bin').value:0)||0;
+      db.trabajadores[idx].tPaltaKg = parseFloat(document.getElementById('w-t-palta-kg')?document.getElementById('w-t-palta-kg').value:0)||0;
+      db.trabajadores[idx].tFrutC1 = parseFloat(document.getElementById('w-t-frut-c1')?document.getElementById('w-t-frut-c1').value:0)||0;
+      db.trabajadores[idx].tFrutC2 = parseFloat(document.getElementById('w-t-frut-c2')?document.getElementById('w-t-frut-c2').value:0)||0;
+      db.trabajadores[idx].tFrutKg = parseFloat(document.getElementById('w-t-frut-kg')?document.getElementById('w-t-frut-kg').value:0)||0;
+      save('trabajadores');
+      closeModal('modal-trabajador');
+      resetTrabajadorForm();
+      toast('✅ Trabajador actualizado correctamente');
+      renderTrabajadores();
+      updateWorkerSelects();
+    }
+  } else {
+    // NEW MODE - original save logic
+    readImgAsB64('w-foto', function(foto){
+      db.trabajadores.push({
+        id: genId(db.trabajadores),
+        nombre: nom,
+        rut: document.getElementById('w-rut').value,
+        rol: document.getElementById('w-rol').value,
+        tel: document.getElementById('w-tel').value,
+        tarifa: parseFloat(document.getElementById('w-tarifa').value)||0,
+        tarifaDia: parseFloat(document.getElementById('w-tarifa-dia')?document.getElementById('w-tarifa-dia').value:0)||0,
+        tPaltaBin: parseFloat(document.getElementById('w-t-palta-bin')?document.getElementById('w-t-palta-bin').value:0)||0,
+        tPaltaKg: parseFloat(document.getElementById('w-t-palta-kg')?document.getElementById('w-t-palta-kg').value:0)||0,
+        tFrutC1: parseFloat(document.getElementById('w-t-frut-c1')?document.getElementById('w-t-frut-c1').value:0)||0,
+        tFrutC2: parseFloat(document.getElementById('w-t-frut-c2')?document.getElementById('w-t-frut-c2').value:0)||0,
+        tFrutKg: parseFloat(document.getElementById('w-t-frut-kg')?document.getElementById('w-t-frut-kg').value:0)||0,
+        estado: document.getElementById('w-estado').value,
+        foto: foto
+      });
+      save('trabajadores');
+      closeModal('modal-trabajador');
+      resetTrabajadorForm();
+      toast('✅ Trabajador registrado');
+      renderTrabajadores();
+      updateWorkerSelects();
+    });
+  }
+}
+
+function resetTrabajadorForm(){
+  _editingWorkerId = null;
+  ['w-nom','w-rut','w-tel','w-tarifa','w-tarifa-dia','w-t-palta-bin','w-t-palta-kg','w-t-frut-c1','w-t-frut-c2','w-t-frut-kg'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  var title = document.getElementById('modal-trab-title');
+  if(title) title.textContent = '👷 Registrar Trabajador';
+  var btn = document.getElementById('btn-save-trabajador');
+  if(btn) btn.textContent = '💾 Guardar';
+  var prev = document.getElementById('w-foto-prev');
+  if(prev) prev.style.display='none';
+}
+
+// Reset form when modal closes
+document.addEventListener('click', function(e){
+  if(e.target && e.target.classList && e.target.classList.contains('modal-backdrop')){
+    resetTrabajadorForm();
+  }
+});
+
+// ========== LIQUIDACIÓN INDIVIDUAL ==========
+var _liqIndWorkerId = null;
+
+function verLiquidacionIndividual(workerId){
+  _liqIndWorkerId = workerId;
+  var w = db.trabajadores.find(function(x){ return x.id===workerId; });
+  if(!w) return;
+
+  // Set worker info header
+  var infoEl = document.getElementById('liq-ind-worker-info');
+  if(infoEl){
+    var color = wcolor(db.trabajadores.indexOf(w));
+    infoEl.innerHTML = 
+      (w.foto ? '<img src="'+w.foto+'" style="width:50px;height:50px;border-radius:50%;object-fit:cover">' :
+       '<div style="width:50px;height:50px;border-radius:50%;background:'+color+';display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff">'+w.nombre.charAt(0)+'</div>') +
+      '<div>'+
+        '<div style="font-weight:700;font-size:1.1rem;color:var(--green-deep)">'+w.nombre+'</div>'+
+        '<div style="font-size:.8rem;color:var(--text-muted)">'+w.rol+' · '+badge(w.estado)+'</div>'+
+        (w.tel ? '<div style="font-size:.75rem;color:var(--text-muted)">📞 '+w.tel+'</div>' : '')+
+      '</div>';
+  }
+
+  // Set default dates to this month
+  var now = new Date();
+  var f = function(d){ return d.toISOString().split('T')[0]; };
+  document.getElementById('liq-ind-d').value = f(new Date(now.getFullYear(), now.getMonth(), 1));
+  document.getElementById('liq-ind-h').value = f(new Date(now.getFullYear(), now.getMonth()+1, 0));
+
+  var title = document.getElementById('liq-ind-title');
+  if(title) title.textContent = '💰 Liquidación — '+w.nombre;
+
+  openModal('modal-liq-individual');
+  calcLiqIndividual();
+}
+
+function setLiqIndRange(tipo){
+  var now = new Date();
+  var f = function(d){ return d.toISOString().split('T')[0]; };
+  if(tipo==='semana'){ var mon=new Date(now); mon.setDate(now.getDate()-now.getDay()+1); document.getElementById('liq-ind-d').value=f(mon); document.getElementById('liq-ind-h').value=f(now); }
+  else if(tipo==='quincena'){ var q=now.getDate()<=15?1:16; var qe=now.getDate()<=15?15:new Date(now.getFullYear(),now.getMonth()+1,0).getDate(); document.getElementById('liq-ind-d').value=f(new Date(now.getFullYear(),now.getMonth(),q)); document.getElementById('liq-ind-h').value=f(new Date(now.getFullYear(),now.getMonth(),qe)); }
+  else if(tipo==='mes'){ document.getElementById('liq-ind-d').value=f(new Date(now.getFullYear(),now.getMonth(),1)); document.getElementById('liq-ind-h').value=f(new Date(now.getFullYear(),now.getMonth()+1,0)); }
+  else if(tipo==='mes-ant'){ document.getElementById('liq-ind-d').value=f(new Date(now.getFullYear(),now.getMonth()-1,1)); document.getElementById('liq-ind-h').value=f(new Date(now.getFullYear(),now.getMonth(),0)); }
+  calcLiqIndividual();
+}
+
+function calcLiqIndividual(){
+  if(!_liqIndWorkerId) return;
+  var d = document.getElementById('liq-ind-d').value;
+  var h = document.getElementById('liq-ind-h').value;
+
+  var jornadas = db.jornadas
+    .filter(function(j){ return j.workerId===_liqIndWorkerId && inRange(j.fecha,d,h); })
+    .sort(function(a,b){ return a.fecha.localeCompare(b.fecha); });
+
+  // Summary
+  var totalPago = jornadas.reduce(function(s,j){ return s+(j.pago||0); }, 0);
+  var totalHoras = jornadas.reduce(function(s,j){ return s+(j.horas||0); }, 0);
+  var totalBins = jornadas.reduce(function(s,j){ return s+(j.paltaBins||0); }, 0);
+  var totalC1 = jornadas.reduce(function(s,j){ return s+(j.frutC1||0); }, 0);
+  var totalC2 = jornadas.reduce(function(s,j){ return s+(j.frutC2||0); }, 0);
+  var pagadas = jornadas.filter(function(j){ return j.pagado; }).length;
+
+  var summaryEl = document.getElementById('liq-ind-summary');
+  if(summaryEl){
+    summaryEl.innerHTML = [
+      ['📋', jornadas.length, 'Jornadas'],
+      ['⏱️', totalHoras+'h', 'Horas'],
+      ['📦', totalBins, 'BINs'],
+      ['🧺', totalC1+'/'+totalC2, '1ra/2da Cajas'],
+      ['✅', pagadas+'/'+jornadas.length, 'Pagadas'],
+      ['💰', fmtMoney(totalPago), 'TOTAL A PAGAR'],
+    ].map(function(s, i){
+      var isTotal = i===5;
+      return '<div style="text-align:center;padding:12px;background:'+(isTotal?'#1a3325':'#f0faf4')+';border-radius:8px;border:1px solid '+(isTotal?'#2d6a4f':'var(--border)')+'">'+
+        '<div style="font-size:1.4rem">'+s[0]+'</div>'+
+        '<div style="font-family:Georgia,serif;font-size:'+(isTotal?'1.2rem':'1.1rem')+';font-weight:700;color:'+(isTotal?'#b7e4c7':'var(--green-deep)')+'">'+s[1]+'</div>'+
+        '<div style="font-size:.68rem;color:'+(isTotal?'#52b788':'var(--text-muted)')+';text-transform:uppercase;letter-spacing:1px">'+s[2]+'</div>'+
+      '</div>';
+    }).join('');
+  }
+
+  // Excel-style table rows
+  var tbody = document.getElementById('liq-ind-tabla');
+  if(tbody){
+    if(!jornadas.length){
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text-muted)">Sin jornadas en este período</td></tr>';
+    } else {
+      tbody.innerHTML = jornadas.map(function(j, idx){
+        var bg = idx%2===0 ? '#fff' : '#f9fafb';
+        var pagadoBadge = j.pagado ? 
+          '<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700">✅ Pagado</span>' :
+          '<span style="background:#fef3cd;color:#856404;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700">⏳ Pendiente</span>';
+        return '<tr style="background:'+bg+';border-bottom:1px solid #e5e7eb">'+
+          '<td style="padding:9px 12px;font-weight:600;font-family:monospace">'+fmtDate(j.fecha)+'</td>'+
+          '<td style="padding:9px 12px">'+badge(j.modo||'jornal')+'</td>'+
+          '<td style="padding:9px 12px;text-align:right;font-family:monospace">'+(j.paltaBins||0)+'</td>'+
+          '<td style="padding:9px 12px;text-align:right;font-family:monospace">'+(j.paltaKg||0)+'</td>'+
+          '<td style="padding:9px 12px;text-align:right;font-family:monospace">'+(j.frutC1||0)+'</td>'+
+          '<td style="padding:9px 12px;text-align:right;font-family:monospace">'+(j.frutC2||0)+'</td>'+
+          '<td style="padding:9px 12px;text-align:right;font-family:monospace">'+(j.frutKg||0)+'</td>'+
+          '<td style="padding:9px 12px;text-align:right;font-family:monospace">'+(j.horas||0)+'</td>'+
+          '<td style="padding:9px 12px;text-align:center;color:var(--text-muted)">'+(j.sector||'—')+'</td>'+
+          '<td style="padding:9px 12px;text-align:right;font-weight:700;font-family:monospace;color:var(--green-deep);background:#f0faf4">'+fmtMoney(j.pago||0)+'</td>'+
+          '<td style="padding:9px 12px;text-align:center">'+pagadoBadge+'</td>'+
+        '</tr>';
+      }).join('');
+    }
+
+    // Totals row
+    var tfoot = document.getElementById('liq-ind-totals');
+    if(tfoot){
+      tfoot.innerHTML = '<tr style="background:#1a3325;color:#b7e4c7;font-weight:700">'+
+        '<td style="padding:10px 12px;font-size:.85rem">TOTAL ('+jornadas.length+' jornadas)</td>'+
+        '<td></td>'+
+        '<td style="padding:10px 12px;text-align:right;font-family:monospace">'+totalBins+'</td>'+
+        '<td style="padding:10px 12px;text-align:right;font-family:monospace">'+jornadas.reduce(function(s,j){return s+(j.paltaKg||0);},0)+'</td>'+
+        '<td style="padding:10px 12px;text-align:right;font-family:monospace">'+totalC1+'</td>'+
+        '<td style="padding:10px 12px;text-align:right;font-family:monospace">'+totalC2+'</td>'+
+        '<td style="padding:10px 12px;text-align:right;font-family:monospace">'+jornadas.reduce(function(s,j){return s+(j.frutKg||0);},0)+'</td>'+
+        '<td style="padding:10px 12px;text-align:right;font-family:monospace">'+totalHoras+'</td>'+
+        '<td></td>'+
+        '<td style="padding:10px 12px;text-align:right;font-family:monospace;font-size:1rem;background:#2d6a4f">'+fmtMoney(totalPago)+'</td>'+
+        '<td style="padding:10px 12px;text-align:center">'+pagadas+'/'+jornadas.length+'</td>'+
+      '</tr>';
+    }
+  }
+}
+
+function marcarTodosLiqInd(){
+  var d = document.getElementById('liq-ind-d').value;
+  var h = document.getElementById('liq-ind-h').value;
+  db.jornadas.filter(function(j){ return j.workerId===_liqIndWorkerId && inRange(j.fecha,d,h); })
+    .forEach(function(j){ j.pagado=true; });
+  save('jornadas');
+  calcLiqIndividual();
+  toast('✅ Todas las jornadas marcadas como pagadas');
+}
+
+function exportLiqIndCSV(){
+  var w = db.trabajadores.find(function(x){ return x.id===_liqIndWorkerId; });
+  if(!w) return;
+  var d = document.getElementById('liq-ind-d').value;
+  var h = document.getElementById('liq-ind-h').value;
+  var jornadas = db.jornadas.filter(function(j){ return j.workerId===_liqIndWorkerId && inRange(j.fecha,d,h); })
+    .sort(function(a,b){ return a.fecha.localeCompare(b.fecha); });
+  var rows = [['Trabajador','Fecha','Tipo','Palta BINs','Palta Kg','Frut 1ra','Frut 2da','Frut Kg','Horas','Sector','Pago','Estado']];
+  jornadas.forEach(function(j){
+    rows.push([w.nombre,j.fecha,j.modo||'—',j.paltaBins||0,j.paltaKg||0,j.frutC1||0,j.frutC2||0,j.frutKg||0,j.horas||0,j.sector||'—',j.pago||0,j.pagado?'Pagado':'Pendiente']);
+  });
+  rows.push(['TOTAL','','','','','','','','','',jornadas.reduce(function(s,j){return s+(j.pago||0);},0),'']);
+  var csv = rows.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Liquidacion_'+w.nombre.replace(/ /g,'_')+'_'+d+'_al_'+h+'.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('📥 CSV descargado');
 }
 
 // ========== INIT ==========
