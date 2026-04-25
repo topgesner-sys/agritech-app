@@ -91,6 +91,7 @@ body{font-family:var(--font-b);background:var(--bg);color:var(--text);min-height
 .view{display:none;animation:fadeIn .3s ease}
 .view.active{display:block}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
 /* STAT CARDS */
@@ -2124,7 +2125,12 @@ var _userRole = 'viewer'; // 'admin' or 'viewer'
 
 function showSyncStatus(msg, color){
   var el = document.getElementById('sync-status');
-  if(el){ el.textContent = msg; el.style.color = color || '#52b788'; }
+  if(el){ 
+    el.innerHTML = msg === '🔴 En vivo' ? 
+      '<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:#52b788;border-radius:50%;display:inline-block;animation:pulse 2s infinite"></span>En vivo</span>' :
+      msg;
+    el.style.color = color || '#52b788'; 
+  }
 }
 
 // ========== FIREBASE SYNC ==========
@@ -2140,23 +2146,108 @@ async function syncToCloud(key){
   }
 }
 
-async function loadFromCloud(){
+// Real-time listeners storage
+var _listeners = [];
+
+function loadFromCloud(){
   if(!_fundoId) return;
-  showSyncStatus('⏳ Cargando datos...', '#3b82f6');
-  var loaded = 0;
-  for(var key of KEYS){
+  showSyncStatus('⏳ Conectando...', '#3b82f6');
+
+  // Unsubscribe existing listeners first
+  _listeners.forEach(function(unsub){ try{ unsub(); }catch(e){} });
+  _listeners = [];
+
+  var loadedCount = 0;
+  var totalKeys = KEYS.length;
+
+  KEYS.forEach(function(key){
     try {
-      var doc = await _db.collection('fundos').doc(_fundoId).collection(key).doc('data').get();
-      if(doc.exists && doc.data().items && doc.data().items.length > 0){
-        db[key] = doc.data().items;
-        save(key);
-        loaded++;
-      }
-    } catch(e) { console.warn('Load error for', key, e.message); }
+      var ref = _db.collection('fundos').doc(_fundoId).collection(key).doc('data');
+      
+      // Use onSnapshot for real-time updates
+      var unsub = ref.onSnapshot(function(doc){
+        if(doc.exists && doc.data() && doc.data().items){
+          var newItems = doc.data().items;
+          // Only update if data actually changed
+          if(JSON.stringify(db[key]) !== JSON.stringify(newItems)){
+            db[key] = newItems;
+            save(key);
+            // Re-render current view if relevant
+            refreshCurrentView(key);
+          }
+        }
+        loadedCount++;
+        if(loadedCount >= totalKeys){
+          showSyncStatus('🔴 En vivo', '#52b788');
+          renderDashboard();
+          if(loadedCount === totalKeys){
+            toast('☁️ Sincronización en tiempo real activada');
+          }
+        }
+      }, function(err){
+        console.warn('Listener error for', key, err.message);
+        loadedCount++;
+      });
+      
+      _listeners.push(unsub);
+    } catch(e){ 
+      console.warn('Load error for', key, e.message);
+      loadedCount++;
+    }
+  });
+}
+
+// Re-render the current active view when data changes
+function refreshCurrentView(changedKey){
+  var activeView = document.querySelector('.view.active');
+  if(!activeView) return;
+  var viewId = activeView.id.replace('view-','');
+  
+  var keyViewMap = {
+    cosechas: ['cosechas','dashboard'],
+    insumos: ['insumos'],
+    inventario: ['inventario','dashboard'],
+    trabajadores: ['trabajadores','liquidaciones'],
+    jornadas: ['trabajadores','liquidaciones'],
+    costos: ['costos','dashboard'],
+    clima: ['clima','dashboard'],
+    eventos: ['calendario'],
+    animales: ['ganado'],
+    sanidad: ['sanidad'],
+    reproduccion: ['reproduccion'],
+    creditos: ['creditos'],
+    cuotas: ['creditos'],
+    presupuestos: ['presupuesto'],
+    presupItems: ['presupuesto'],
+    asistencia: ['asistencia'],
+    envases: ['envases'],
+    compradores: ['envases'],
+  };
+  
+  var relevantViews = keyViewMap[changedKey] || [];
+  if(relevantViews.includes(viewId)){
+    var renders = {
+      dashboard: renderDashboard,
+      cosechas: renderCosechas,
+      insumos: renderInsumos,
+      inventario: renderInventario,
+      trabajadores: renderTrabajadores,
+      liquidaciones: renderLiquidaciones,
+      costos: renderCostos,
+      clima: renderClima,
+      calendario: renderCalendario,
+      ganado: renderGanado,
+      sanidad: renderSanidad,
+      reproduccion: renderReproduccion,
+      creditos: renderCreditos,
+      presupuesto: renderPresupuesto,
+      asistencia: renderAsistencia,
+      envases: renderEnvases,
+    };
+    if(renders[viewId]) {
+      try { renders[viewId](); } catch(e) { console.warn('Refresh error:', e.message); }
+    }
   }
-  showSyncStatus('✅ ' + loaded + ' módulos cargados', '#52b788');
-  renderDashboard();
-  toast('☁️ Datos del fundo cargados correctamente');
 }
 
 // Override save() to also sync to cloud
