@@ -5097,6 +5097,170 @@ function renderEnvases(){
   if(totalEl) totalEl.innerHTML = badge(filt.length+' registros','badge-green');
 }
 
+// ========== LIQUIDACIONES ==========
+function renderLiquidaciones(){
+  // Update worker select
+  var liqWorkerEl = document.getElementById('liq-worker');
+  if(liqWorkerEl){
+    var curVal = liqWorkerEl.value;
+    liqWorkerEl.innerHTML = '<option value="">Todos los activos</option>' +
+      db.trabajadores.filter(function(w){ return w.estado==='Activo'; })
+        .map(function(w){ return '<option value="'+w.id+'">'+w.nombre+'</option>'; }).join('');
+    liqWorkerEl.value = curVal;
+  }
+
+  var d = document.getElementById('liq-d') ? document.getElementById('liq-d').value : '';
+  var h = document.getElementById('liq-h') ? document.getElementById('liq-h').value : '';
+  var wid = document.getElementById('liq-worker') ? parseInt(document.getElementById('liq-worker').value) || 0 : 0;
+
+  // Filter workers to show
+  var workers = db.trabajadores.filter(function(w){
+    if(w.estado !== 'Activo') return false;
+    if(wid && w.id !== wid) return false;
+    return true;
+  });
+
+  var container = document.getElementById('liq-cards');
+  if(!container) return;
+
+  if(!workers.length){
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)"><div style="font-size:2.5rem">👷</div><div style="margin-top:8px">No hay trabajadores activos</div></div>';
+    return;
+  }
+
+  // Summary stats
+  var allJornadas = db.jornadas.filter(function(j){ return inRange(j.fecha, d, h); });
+  var totalPago = allJornadas.reduce(function(s,j){ return s+j.pago; }, 0);
+  var statsEl = document.getElementById('liq-stats');
+  if(statsEl){
+    statsEl.innerHTML = [
+      ['👷', workers.length, 'Trabajadores'],
+      ['📋', allJornadas.length, 'Jornadas'],
+      ['💰', fmtMoney(totalPago), 'Total a pagar'],
+    ].map(function(s){
+      return '<div class="stat-card" style="--accent:var(--green-mid)"><div class="stat-icon">'+s[0]+'</div><div class="stat-label">'+s[2]+'</div><div class="stat-value" style="font-size:1.5rem">'+s[1]+'</div></div>';
+    }).join('');
+  }
+
+  // Render each worker card
+  container.innerHTML = workers.map(function(w, wi){
+    var jornadas = db.jornadas.filter(function(j){
+      return j.workerId === w.id && inRange(j.fecha, d, h);
+    }).sort(function(a,b){ return a.fecha.localeCompare(b.fecha); });
+
+    var totalWorker = jornadas.reduce(function(s,j){ return s+j.pago; }, 0);
+    var totalHoras  = jornadas.filter(function(j){ return j.horas>0; }).reduce(function(s,j){ return s+j.horas; }, 0);
+    var pagado = jornadas.filter(function(j){ return j.pagado; }).length;
+
+    var color = wcolor(wi);
+    var initials = w.nombre.charAt(0).toUpperCase();
+
+    // Build jornadas table
+    var jornadasRows = jornadas.length ? jornadas.map(function(j){
+      var detalle = buildJornadaDetalle ? buildJornadaDetalle(j) : (j.tarea||'—');
+      var pagoCell = '<span class="mono" style="font-weight:700;color:var(--green-deep)">'+fmtMoney(j.pago)+'</span>';
+      var pagadoBtn = j.pagado ? 
+        '<span class="badge badge-green">✅ Pagado</span>' :
+        '<button class="btn btn-sm" style="background:#f0faf4;border:1px solid var(--border);font-size:.7rem" onclick="marcarPagado('+j.id+')">Marcar pagado</button>';
+      return '<tr>'+
+        '<td><span class="mono">'+fmtDate(j.fecha)+'</span></td>'+
+        '<td>'+badge(j.modo||'jornal')+'</td>'+
+        '<td style="font-size:.78rem">'+detalle+'</td>'+
+        '<td>'+(j.sector||'—')+'</td>'+
+        '<td>'+pagoCell+'</td>'+
+        '<td>'+pagadoBtn+'</td>'+
+      '</tr>';
+    }).join('') : '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-muted)">Sin jornadas en este período</td></tr>';
+
+    return '<div class="card" style="margin-bottom:18px">'+
+      '<div class="card-header" style="background:'+color+'15">'+
+        '<div style="display:flex;align-items:center;gap:12px">'+
+          (w.foto ? 
+            '<img src="'+w.foto+'" style="width:44px;height:44px;border-radius:50%;object-fit:cover">' :
+            '<div style="width:44px;height:44px;border-radius:50%;background:'+color+';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff">'+initials+'</div>'
+          )+
+          '<div>'+
+            '<div style="font-weight:700;font-size:1rem;color:var(--green-deep)">'+w.nombre+'</div>'+
+            '<div style="font-size:.78rem;color:var(--text-muted)">'+w.rol+' · '+jornadas.length+' jornadas · '+totalHoras+'h · '+fmtMoney(totalWorker)+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+          '<button class="btn btn-secondary btn-sm liq-csv-btn" data-wid="'+w.id+'" data-d="'+d+'" data-h="'+h+'">📥 CSV</button>'+
+          '<button class="btn btn-secondary btn-sm liq-print-btn" data-wid="'+w.id+'" data-d="'+d+'" data-h="'+h+'">🖨️ Imprimir</button>'+
+          (pagado < jornadas.length ? '<button class="btn btn-primary btn-sm liq-pagado-btn" data-wid="'+w.id+'" data-d="'+d+'" data-h="'+h+'">✅ Marcar todo pagado</button>' : '')+
+        '</div>'+
+      '</div>'+
+      '<div class="table-wrap">'+
+        '<table>'+
+          '<thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Sector</th><th>Pago</th><th>Estado</th></tr></thead>'+
+          '<tbody>'+jornadasRows+'</tbody>'+
+          '<tfoot><tr style="background:#f0faf4">'+
+            '<td colspan="4" style="padding:10px 12px;font-weight:700;color:var(--green-deep)">TOTAL</td>'+
+            '<td style="padding:10px 12px"><span class="mono" style="font-weight:700;font-size:1.1rem;color:var(--green-deep)">'+fmtMoney(totalWorker)+'</span></td>'+
+            '<td style="padding:10px 12px"><span style="font-size:.78rem;color:var(--text-muted)">'+pagado+'/'+jornadas.length+' pagadas</span></td>'+
+          '</tr></tfoot>'+
+        '</table>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+
+  // Attach event listeners using data attributes
+  if(container){
+    container.querySelectorAll('.liq-csv-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){ exportLiqCSV(parseInt(btn.dataset.wid), btn.dataset.d, btn.dataset.h); });
+    });
+    container.querySelectorAll('.liq-print-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){ if(typeof printLiquidacion==='function') printLiquidacion(parseInt(btn.dataset.wid), btn.dataset.d, btn.dataset.h); });
+    });
+    container.querySelectorAll('.liq-pagado-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){ marcarTodosPagados(parseInt(btn.dataset.wid), btn.dataset.d, btn.dataset.h); });
+    });
+  }
+}
+
+function marcarPagado(jornadaId){
+  var j = db.jornadas.find(function(x){ return x.id === jornadaId; });
+  if(j){ j.pagado = true; save('jornadas'); renderLiquidaciones(); toast('✅ Jornada marcada como pagada'); }
+}
+
+function marcarTodosPagados(workerId, d, h){
+  db.jornadas.filter(function(j){ return j.workerId===workerId && inRange(j.fecha,d,h); })
+    .forEach(function(j){ j.pagado = true; });
+  save('jornadas');
+  renderLiquidaciones();
+  toast('✅ Todas las jornadas marcadas como pagadas');
+}
+
+function exportLiqCSV(workerId, d, h){
+  var w = db.trabajadores.find(function(x){ return x.id===workerId; });
+  if(!w) return;
+  var jornadas = db.jornadas.filter(function(j){ return j.workerId===workerId && inRange(j.fecha,d,h); });
+  var rows = [['Trabajador','Fecha','Tipo','Palta BINs','Palta kg','Frut 1ra','Frut 2da','Frut kg','Horas','Pago','Pagado']];
+  jornadas.forEach(function(j){
+    rows.push([w.nombre, j.fecha, j.modo||'—', j.paltaBins||0, j.paltaKg||0, j.frutC1||0, j.frutC2||0, j.frutKg||0, j.horas||0, j.pago, j.pagado?'Sí':'No']);
+  });
+  rows.push(['TOTAL','','','','','','','','', jornadas.reduce(function(s,j){ return s+j.pago; },0),'']);
+  var csv = rows.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Liquidacion_'+w.nombre.replace(/ /g,'_')+'_'+d+'_'+h+'.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('📥 CSV descargado: '+w.nombre);
+}
+
+// Set liquidacion date shortcuts
+function setLiqRange(tipo){
+  var now = new Date();
+  var f = function(d){ return d.toISOString().split('T')[0]; };
+  if(tipo==='semana'){ var mon=new Date(now); mon.setDate(now.getDate()-now.getDay()+1); document.getElementById('liq-d').value=f(mon); document.getElementById('liq-h').value=f(now); }
+  else if(tipo==='quincena'){ var q=now.getDate()<=15?1:16; var qe=now.getDate()<=15?15:new Date(now.getFullYear(),now.getMonth()+1,0).getDate(); document.getElementById('liq-d').value=f(new Date(now.getFullYear(),now.getMonth(),q)); document.getElementById('liq-h').value=f(new Date(now.getFullYear(),now.getMonth(),qe)); }
+  else if(tipo==='mes'){ document.getElementById('liq-d').value=f(new Date(now.getFullYear(),now.getMonth(),1)); document.getElementById('liq-h').value=f(new Date(now.getFullYear(),now.getMonth()+1,0)); }
+  else if(tipo==='mes-ant'){ document.getElementById('liq-d').value=f(new Date(now.getFullYear(),now.getMonth()-1,1)); document.getElementById('liq-h').value=f(new Date(now.getFullYear(),now.getMonth(),0)); }
+  renderLiquidaciones();
+}
+
 // ========== INIT ==========
 function init(){
   console.log('INIT START');
