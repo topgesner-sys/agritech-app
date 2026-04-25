@@ -2872,7 +2872,7 @@ function renderDashboard(){
       const ex=c.tipo==='Palta'?(c.bins>0?`📦 ${c.bins} BINs`:'—'):(c.c1>0||c.c2>0?`1ra:${c.c1} 2da:${c.c2}`:'—');
       return `<tr><td>${badge(c.tipo)}</td><td>${mono(c.kg>0?c.kg.toLocaleString()+' kg':'—')}</td><td>${ex}</td><td>${c.sector}</td><td>${mono(fmtDate(c.fecha))}</td></tr>`;
     }).join('')
-    :'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">Sin cosechas</td></tr>';
+    :'<tr><td colspan="5"><div style="text-align:center;padding:24px;color:var(--text-muted)"><div style="font-size:1.8rem;margin-bottom:6px">🌱</div><div>Aún no hay cosechas. <button class="btn btn-primary btn-sm" onclick="openModal(\'modal-cosecha\')">＋ Registrar</button></div></div></td></tr>';
 
   // Clima reciente
   const climaRec=[...db.clima].sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,3);
@@ -2942,7 +2942,7 @@ function renderCosechas(){
       <td style="max-width:120px;font-size:.78rem;color:var(--text-muted)">${c.obs||'—'}</td>
       <td><button class="btn btn-danger btn-sm" onclick="del('cosechas',${c.id},()=>{renderCosechas();renderDashboard()})">🗑</button></td>
     </tr>`).join('')
-    :'<tr><td colspan="10"><div style="text-align:center;padding:32px;color:var(--text-muted)">🌱 Sin cosechas</div></td></tr>';
+    :'<tr><td colspan="10"><div style="text-align:center;padding:32px;color:var(--text-muted)"><div style="font-size:2.5rem;margin-bottom:8px">🌱</div><div style="font-weight:600;margin-bottom:6px">Sin cosechas registradas</div><div style="font-size:.82rem;margin-bottom:14px">Registra tu primera cosecha de palta o frutilla</div><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-cosecha\')">＋ Nueva Cosecha</button></div></td></tr>';
 }
 
 function showPhoto(src){
@@ -2964,7 +2964,7 @@ function renderInsumos(){
   }).sort((a,b)=>b.fecha.localeCompare(a.fecha));
   document.getElementById('tabla-insumos').innerHTML=filt.length
     ?filt.map(i=>`<tr><td><strong>${i.nombre}</strong></td><td>${badge(i.tipo)}</td><td>${mono(i.cantidad.toLocaleString())}</td><td>${i.unidad}</td><td>${mono(fmtDate(i.fecha))}</td><td style="font-size:.78rem;color:var(--text-muted)">${i.obs||'—'}</td><td><button class="btn btn-danger btn-sm" onclick="del('insumos',${i.id},renderInsumos)">🗑</button></td></tr>`).join('')
-    :'<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">🧪 Sin insumos</td></tr>';
+    :'<tr><td colspan="7"><div style="text-align:center;padding:32px;color:var(--text-muted)"><div style="font-size:2.5rem;margin-bottom:8px">🧪</div><div style="font-weight:600;margin-bottom:6px">Sin insumos registrados</div><div style="font-size:.82rem;margin-bottom:14px">Registra los fertilizantes, pesticidas y herbicidas usados</div><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-insumo\')">＋ Registrar Insumo</button></div></td></tr>';
 }
 
 // ========== INVENTARIO ==========
@@ -2983,7 +2983,7 @@ function renderInventario(){
       <td>${i.proveedor}</td><td>${mono(fmtDate(i.fecha))}</td>
       <td><button class="btn btn-danger btn-sm" onclick="del('inventario',${i.id},()=>{renderInventario();checkAlertas()})">🗑</button></td></tr>`;
     }).join('')
-    :'<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">📦 Sin productos</td></tr>';
+    :'<tr><td colspan="7"><div style="text-align:center;padding:32px;color:var(--text-muted)"><div style="font-size:2.5rem;margin-bottom:8px">📦</div><div style="font-weight:600;margin-bottom:6px">Sin productos en inventario</div><div style="font-size:.82rem;margin-bottom:14px">Agrega los productos y materiales del fundo</div><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-inventario\')">＋ Agregar Producto</button></div></td></tr>';
 }
 
 // ========== TRABAJADORES ==========
@@ -3013,6 +3013,10 @@ function renderTrabajadores(){
       <button class="btn btn-danger btn-sm" style="margin-top:10px;width:100%" onclick="del('trabajadores',${w.id},renderTrabajadores)">Eliminar</button>
     </div>`;
   }).join('');
+  if(!db.trabajadores.length){
+    var wg = document.getElementById('worker-grid');
+    if(wg) wg.innerHTML = '<div style="text-align:center;padding:40px;color:#6b7c6e;grid-column:1/-1"><div style="font-size:3rem;margin-bottom:12px">👷</div><div style="font-size:1rem;font-weight:600;color:#1a3325;margin-bottom:8px">No hay trabajadores registrados</div><div style="font-size:.85rem;margin-bottom:16px">Agrega tu primer trabajador para comenzar</div></div>';
+  }
 
   const tbody=document.getElementById('tabla-jornadas');
   const sorted=[...db.jornadas].sort((a,b)=>b.fecha.localeCompare(a.fecha));
@@ -3044,7 +3048,7 @@ function renderCostos(){
 
   document.getElementById('tabla-costos').innerHTML=filt.length
     ?filt.map(c=>`<tr><td><strong>${c.desc}</strong></td><td>${badge(c.cat)}</td><td>${mono(fmtMoney(c.monto))}</td><td>${mono(fmtDate(c.fecha))}</td><td style="font-size:.78rem;color:var(--text-muted)">${c.obs||'—'}</td><td><button class="btn btn-danger btn-sm" onclick="del('costos',${c.id},renderCostos)">🗑</button></td></tr>`).join('')
-    :'<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">Sin gastos</td></tr>';
+    :'<tr><td colspan="6"><div style="text-align:center;padding:32px;color:var(--text-muted)"><div style="font-size:2.5rem;margin-bottom:8px">💰</div><div style="font-weight:600;margin-bottom:6px">Sin gastos registrados</div><div style="font-size:.82rem;margin-bottom:14px">Registra los gastos y costos del fundo</div><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-costo\')">＋ Registrar Gasto</button></div></td></tr>';
 }
 
 // ========== CLIMA ==========
@@ -3071,7 +3075,7 @@ function renderClima(){
 
   document.getElementById('tabla-clima').innerHTML=sorted.length
     ?sorted.map(c=>`<tr><td>${mono(fmtDate(c.fecha))}</td><td>${c.cond}</td><td>${mono(c.tmin+'°C')}</td><td>${mono(c.tmax+'°C')}</td><td>${mono(c.lluvia+' mm')}</td><td>${mono(c.viento+' km/h')}</td><td style="font-size:.78rem;color:var(--text-muted)">${c.obs||'—'}</td><td><button class="btn btn-danger btn-sm" onclick="del('clima',${c.id},renderClima)">🗑</button></td></tr>`).join('')
-    :'<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">Sin registros climáticos</td></tr>';
+    :'<tr><td colspan="8"><div style="text-align:center;padding:32px;color:var(--text-muted)"><div style="font-size:2.5rem;margin-bottom:8px">🌦️</div><div style="font-weight:600;margin-bottom:6px">Sin registros climáticos</div><div style="font-size:.82rem;margin-bottom:14px">Registra las condiciones del tiempo cada día</div><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-clima\')">＋ Registrar Clima</button></div></td></tr>';
 }
 
 // ========== CALENDARIO ==========
