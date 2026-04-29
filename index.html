@@ -3499,30 +3499,48 @@ function updateWorkerSelects(){
 
 function renderTrabajadores(){
   updateWorkerSelects();
-  document.getElementById('worker-grid').innerHTML=db.trabajadores.map((w,i)=>{
-    const jorns=db.jornadas.filter(j=>j.workerId===w.id);
-    const horas=jorns.reduce((s,j)=>s+j.horas,0);
-    const pago=jorns.reduce((s,j)=>s+j.pago,0);
-    return `<div class="worker-card">
-      ${w.foto?`<img src="${w.foto}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;margin:0 auto 10px;display:block">`:
-        `<div class="worker-avatar" style="background:${wcolor(i)}">${w.nombre.charAt(0)}</div>`}
-      <div class="worker-name">${w.nombre}</div>
-      <div class="worker-role">${w.rol}</div>
-      <div style="margin-top:8px">${badge(w.estado)}</div>
-      <div class="worker-stats">
-        <div class="worker-stat"><div class="worker-stat-val">${horas}</div><div class="worker-stat-lbl">Horas</div></div>
-        <div class="worker-stat"><div class="worker-stat-val">${fmtMoney(pago).replace('$','$')}</div><div class="worker-stat-lbl">Total</div></div>
-      </div>
-      <div style="display:flex;gap:6px;margin-top:10px">
-        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="editTrabajador(${w.id})">✏️ Editar</button>
-        <button class="btn btn-danger btn-sm" style="flex:1" onclick="del('trabajadores',${w.id},renderTrabajadores)">🗑 Eliminar</button>
-      </div>
-      <button class="btn btn-primary btn-sm" style="width:100%;margin-top:6px" onclick="verLiquidacionIndividual(${w.id})">💰 Ver Liquidación</button>
-    </div>`;
-  }).join('');
+  var wg = document.getElementById('worker-grid');
+  if(!wg) return;
+  
   if(!db.trabajadores.length){
-    var wg = document.getElementById('worker-grid');
-    if(wg) wg.innerHTML = '<div style="text-align:center;padding:40px;color:#6b7c6e;grid-column:1/-1"><div style="font-size:3rem;margin-bottom:12px">👷</div><div style="font-size:1rem;font-weight:600;color:#1a3325;margin-bottom:8px">No hay trabajadores registrados</div><div style="font-size:.85rem;margin-bottom:16px">Agrega tu primer trabajador para comenzar</div></div>';
+    wg.innerHTML = '<div style="text-align:center;padding:40px;color:#6b7c6e;grid-column:1/-1"><div style="font-size:3rem;margin-bottom:12px">👷</div><div style="font-size:1rem;font-weight:600;color:#1a3325;margin-bottom:8px">No hay trabajadores registrados</div><div style="font-size:.85rem;margin-bottom:16px">Agrega tu primer trabajador para comenzar</div></div>';
+  } else {
+    var cards = db.trabajadores.map(function(w,i){
+      var jorns = db.jornadas.filter(function(j){ return j.workerId===w.id; });
+      var horas = jorns.reduce(function(s,j){ return s+(j.horas||0); }, 0);
+      var pago  = jorns.reduce(function(s,j){ return s+(j.pago||0); }, 0);
+      var adelPend = db.adelantos.filter(function(a){ return a.workerId===w.id && !a.descontado; }).reduce(function(s,a){ return s+(a.monto||0); },0);
+      var avatar = w.foto
+        ? '<img src="'+w.foto+'" style="width:52px;height:52px;border-radius:50%;object-fit:cover;margin:0 auto 10px;display:block">'
+        : '<div class="worker-avatar" style="background:'+wcolor(i)+'">'+w.nombre.charAt(0)+'</div>';
+      var adelBadge = adelPend>0 ? '<div style="font-size:.72rem;color:#b45309;margin-top:4px">💸 Adelanto: '+fmtMoney(adelPend)+'</div>' : '';
+      return '<div class="worker-card">'+
+        avatar+
+        '<div class="worker-name">'+w.nombre+'</div>'+
+        '<div class="worker-role">'+(w.rol||'—')+'</div>'+
+        '<div style="margin-top:8px">'+badge(w.estado||'Activo')+adelBadge+'</div>'+
+        '<div class="worker-stats">'+
+          '<div class="worker-stat"><div class="worker-stat-val">'+horas+'</div><div class="worker-stat-lbl">Horas</div></div>'+
+          '<div class="worker-stat"><div class="worker-stat-val">'+fmtMoney(pago)+'</div><div class="worker-stat-lbl">Total</div></div>'+
+        '</div>'+
+        '<div style="display:flex;gap:6px;margin-top:10px">'+
+          '<button class="btn btn-secondary btn-sm" style="flex:1" data-action="edit" data-id="'+w.id+'">✏️ Editar</button>'+
+          '<button class="btn btn-danger btn-sm" style="flex:1" data-action="del" data-id="'+w.id+'">🗑 Eliminar</button>'+
+        '</div>'+
+        '<button class="btn btn-primary btn-sm" style="width:100%;margin-top:6px" data-action="liq" data-id="'+w.id+'">💰 Ver Liquidación</button>'+
+      '</div>';
+    }).join('');
+    wg.innerHTML = cards;
+    // Event delegation - safe click handling
+    wg.onclick = function(e){
+      var btn = e.target.closest('[data-action]');
+      if(!btn) return;
+      var action = btn.dataset.action;
+      var id = parseInt(btn.dataset.id);
+      if(action==='edit') editTrabajador(id);
+      else if(action==='del') del('trabajadores', id, renderTrabajadores);
+      else if(action==='liq') verLiquidacionIndividual(id);
+    };
   }
 
   const tbody=document.getElementById('tabla-jornadas');
@@ -6430,6 +6448,322 @@ function printLiqIndividual(){
   if(!v){ toast('⚠️ Permite ventanas emergentes para imprimir'); return; }
   v.document.write(html); v.document.close();
   toast('🖨️ Preparando impresión...');
+}
+
+
+// ========== ADELANTOS ==========
+function renderAdelantos(){
+  var wsel = document.getElementById('f-adel-worker');
+  var asel = document.getElementById('adel-worker');
+  var workerOpts = db.trabajadores.map(function(w){ return '<option value="'+w.id+'">'+w.nombre+'</option>'; }).join('');
+  if(wsel){ var cv=wsel.value; wsel.innerHTML='<option value="">Todos los trabajadores</option>'+workerOpts; wsel.value=cv; }
+  if(asel){ var cv2=asel.value; asel.innerHTML='<option value="">Seleccionar...</option>'+workerOpts; asel.value=cv2; }
+
+  var wid = wsel ? parseInt(wsel.value)||0 : 0;
+  var d = document.getElementById('f-adel-d') ? document.getElementById('f-adel-d').value : '';
+  var h = document.getElementById('f-adel-h') ? document.getElementById('f-adel-h').value : '';
+
+  var filt = (db.adelantos||[]).filter(function(a){
+    if(wid && a.workerId !== wid) return false;
+    return inRange(a.fecha, d, h);
+  }).sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
+
+  var total = filt.reduce(function(s,a){ return s+(a.monto||0); },0);
+  var descontado = filt.filter(function(a){ return a.descontado; }).reduce(function(s,a){ return s+(a.monto||0); },0);
+
+  var resEl = document.getElementById('adel-resumen');
+  if(resEl) resEl.innerHTML =
+    '<div class="cost-box"><div class="cost-box-val">'+filt.length+'</div><div class="cost-box-lbl">Adelantos</div></div>'+
+    '<div class="cost-box"><div class="cost-box-val">'+fmtMoney(total)+'</div><div class="cost-box-lbl">Total</div></div>'+
+    '<div class="cost-box"><div class="cost-box-val">'+fmtMoney(descontado)+'</div><div class="cost-box-lbl">Descontado</div></div>'+
+    '<div class="cost-box"><div class="cost-box-val">'+fmtMoney(total-descontado)+'</div><div class="cost-box-lbl">Pendiente</div></div>';
+
+  var tbody = document.getElementById('tabla-adelantos');
+  if(!tbody) return;
+  if(!filt.length){
+    tbody.innerHTML='<tr><td colspan="7"><div style="text-align:center;padding:24px;color:var(--text-muted)"><div style="font-size:2rem">💸</div><div style="font-weight:600;margin:8px 0">Sin adelantos registrados</div></div></td></tr>';
+  } else {
+    tbody.innerHTML = filt.map(function(a){
+      var w = db.trabajadores.find(function(x){ return x.id===a.workerId; });
+      return '<tr>'+
+        '<td><strong>'+(w?w.nombre:'—')+'</strong></td>'+
+        '<td><span class="mono">'+fmtDate(a.fecha)+'</span></td>'+
+        '<td><span class="mono" style="font-weight:700;color:var(--green-deep)">'+fmtMoney(a.monto)+'</span></td>'+
+        '<td>'+(a.periodo||'—')+'</td>'+
+        '<td style="font-size:.82rem;color:var(--text-muted)">'+(a.desc||'—')+'</td>'+
+        '<td>'+(a.descontado?badge('✅ Descontado','badge-green'):badge('⏳ Pendiente','badge-amber'))+'</td>'+
+        '<td style="white-space:nowrap">'+
+          (!a.descontado?'<button class="btn btn-secondary btn-sm" style="margin-right:3px" onclick="marcarAdelantoDescontado('+a.id+')">✅</button>':'')+
+          '<button class="btn btn-secondary btn-sm adel-edit" data-id="'+a.id+'" style="margin-right:3px">✏️</button>'+
+          '<button class="btn btn-danger btn-sm adel-del" data-id="'+a.id+'">🗑</button>'+
+        '</td>'+
+      '</tr>';
+    }).join('');
+  }
+  var tfoot = document.getElementById('tabla-adelantos-tot');
+  if(tfoot) tfoot.innerHTML='<tr style="background:#1a3325;color:#b7e4c7;font-weight:700"><td colspan="2" style="padding:10px 13px">TOTAL</td><td style="padding:10px 13px;font-family:monospace">'+fmtMoney(total)+'</td><td colspan="4" style="padding:10px 13px">Pendiente: '+fmtMoney(total-descontado)+'</td></tr>';
+  if(tbody) tbody.addEventListener('click', function(e){
+    var btn=e.target.closest('[data-id]'); if(!btn) return;
+    var id=parseInt(btn.dataset.id);
+    if(btn.classList.contains('adel-edit')) openEdit('adelantos',id);
+    else if(btn.classList.contains('adel-del')) del('adelantos',id,renderAdelantos);
+  });
+}
+
+function saveAdelanto(){
+  var wid = parseInt(document.getElementById('adel-worker').value)||0;
+  var monto = parseFloat(document.getElementById('adel-monto').value)||0;
+  var fecha = document.getElementById('adel-fecha').value;
+  if(!wid||!monto||!fecha){ toast('⚠️ Completa trabajador, monto y fecha'); return; }
+  if(!db.adelantos) db.adelantos = [];
+  db.adelantos.push({ id:genId(db.adelantos), workerId:wid, fecha:fecha, monto:monto,
+    periodo:document.getElementById('adel-periodo').value,
+    desc:document.getElementById('adel-desc').value, descontado:false });
+  save('adelantos');
+  // Auto-register as company expense
+  var w = db.trabajadores.find(function(x){ return x.id===wid; });
+  db.costos.push({ id:genId(db.costos), desc:'Adelanto — '+(w?w.nombre:'Trabajador'), cat:'Mano de obra', monto:monto, fecha:fecha, obs:'Adelanto de sueldo' });
+  save('costos');
+  closeModal('modal-adelanto');
+  ['adel-monto','adel-periodo','adel-desc'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  toast('✅ Adelanto registrado'); renderAdelantos(); renderDashboard();
+}
+
+function marcarAdelantoDescontado(id){
+  var a = (db.adelantos||[]).find(function(x){ return x.id===id; });
+  if(a){ a.descontado=true; save('adelantos'); renderAdelantos(); toast('✅ Adelanto marcado como descontado'); }
+}
+
+// ========== EMPRESA CONFIG ==========
+function openEmpresaModal(){
+  var emp = (db.empresa && db.empresa[0]) || {};
+  var s = function(id,v){ var el=document.getElementById(id); if(el) el.value=v||''; };
+  s('emp-nombre',emp.nombre); s('emp-rut',emp.rut); s('emp-dir',emp.direccion);
+  s('emp-tel',emp.telefono); s('emp-email',emp.email); s('emp-watermark',emp.watermark||'AgriTech v2.0 Pro');
+  openModal('modal-empresa');
+}
+
+function saveEmpresa(){
+  if(!db.empresa) db.empresa = [];
+  var emp = { id:1, nombre:document.getElementById('emp-nombre').value.trim(),
+    rut:document.getElementById('emp-rut').value, direccion:document.getElementById('emp-dir').value,
+    telefono:document.getElementById('emp-tel').value, email:document.getElementById('emp-email').value,
+    watermark:document.getElementById('emp-watermark').value||'AgriTech v2.0 Pro' };
+  db.empresa = [emp]; save('empresa');
+  closeModal('modal-empresa'); toast('✅ Datos de empresa guardados');
+}
+
+function getEmpresa(){
+  return (db.empresa && db.empresa[0]) || { nombre:'AgriTech — Gestión Agrícola', rut:'', direccion:'', telefono:'', email:'', watermark:'AgriTech v2.0 Pro' };
+}
+
+// ========== FACTURAS ==========
+function calcFactura(){
+  var neto = parseFloat(document.getElementById('fact-neto').value)||0;
+  var ivaSel = document.getElementById('fact-iva-pct').value;
+  var pct = ivaSel==='custom' ? (parseFloat(document.getElementById('fact-iva-custom').value)||0) : parseFloat(ivaSel)||0;
+  if(document.getElementById('fact-iva-custom-div')) document.getElementById('fact-iva-custom-div').style.display = ivaSel==='custom'?'block':'none';
+  var ivaMonto = Math.round(neto * pct / 100);
+  var total = neto + ivaMonto;
+  var ei = document.getElementById('fact-iva-monto'); if(ei) ei.value = fmtMoney(ivaMonto);
+  var et = document.getElementById('fact-total'); if(et) et.value = fmtMoney(total);
+}
+
+function saveFactura(){
+  var num = document.getElementById('fact-num').value.trim();
+  var prov = document.getElementById('fact-prov').value.trim();
+  var neto = parseFloat(document.getElementById('fact-neto').value)||0;
+  var fechaIng = document.getElementById('fact-fecha-ing').value;
+  if(!num||!prov||!neto||!fechaIng){ toast('⚠️ Completa los campos requeridos'); return; }
+  var ivaSel = document.getElementById('fact-iva-pct').value;
+  var pct = ivaSel==='custom' ? (parseFloat(document.getElementById('fact-iva-custom').value)||0) : parseFloat(ivaSel)||0;
+  var ivaMonto = Math.round(neto * pct / 100);
+  var total = neto + ivaMonto;
+  var cat = getCatValue('fact-cat-gasto','fact-cat-otro');
+  if(!db.facturas) db.facturas=[];
+  var f = { id:genId(db.facturas), numero:num, proveedor:prov,
+    nCliente:document.getElementById('fact-cliente').value,
+    nVenta:document.getElementById('fact-venta').value,
+    descripcion:document.getElementById('fact-desc').value,
+    neto:neto, ivaPct:pct, ivaMonto:ivaMonto, total:total,
+    fechaIngreso:fechaIng, fechaVencimiento:document.getElementById('fact-fecha-venc').value,
+    categoria:cat, estado:document.getElementById('fact-estado').value,
+    notas:document.getElementById('fact-notas').value, creadoEn:today() };
+  db.facturas.push(f); save('facturas');
+  if(document.getElementById('fact-crear-gasto').checked){
+    db.costos.push({ id:genId(db.costos), desc:'Factura N°'+num+' — '+prov, cat:cat, monto:total, fecha:fechaIng, obs:'IVA:'+fmtMoney(ivaMonto)+' N°:'+num });
+    save('costos');
+  }
+  closeModal('modal-factura');
+  ['fact-num','fact-prov','fact-cliente','fact-venta','fact-desc','fact-neto','fact-fecha-ing','fact-fecha-venc','fact-notas'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  toast('✅ Factura guardada'); renderFacturas(); renderDashboard(); checkAlertas();
+}
+
+function renderFacturas(){
+  var hoy = today();
+  var filt = (db.facturas||[]).slice().sort(function(a,b){ return b.fechaIngreso.localeCompare(a.fechaIngreso); });
+  var totalPend = filt.filter(function(f){ return f.estado!=='pagada'; }).reduce(function(s,f){ return s+f.total; },0);
+  var totalPag = filt.filter(function(f){ return f.estado==='pagada'; }).reduce(function(s,f){ return s+f.total; },0);
+  var resEl = document.getElementById('fact-resumen');
+  if(resEl) resEl.innerHTML =
+    '<div class="cost-box"><div class="cost-box-val">'+filt.length+'</div><div class="cost-box-lbl">Facturas</div></div>'+
+    '<div class="cost-box"><div class="cost-box-val">'+fmtMoney(totalPend)+'</div><div class="cost-box-lbl">Pendiente</div></div>'+
+    '<div class="cost-box"><div class="cost-box-val">'+fmtMoney(totalPag)+'</div><div class="cost-box-lbl">Pagado</div></div>';
+  // Check vencimiento alerts
+  var strip = document.getElementById('fact-alertas-strip');
+  if(strip){
+    strip.innerHTML = filt.filter(function(f){
+      if(f.estado==='pagada'||!f.fechaVencimiento) return false;
+      var dias = Math.ceil((new Date(f.fechaVencimiento)-new Date())/86400000);
+      return dias>=0 && dias<=3;
+    }).map(function(f){
+      var dias = Math.ceil((new Date(f.fechaVencimiento)-new Date())/86400000);
+      return '<div class="alert alert-warning">⚠️ Factura N°<strong>'+f.numero+'</strong> ('+f.proveedor+') — vence en <strong>'+(dias===0?'HOY':dias+'d')+'</strong> — '+fmtMoney(f.total)+'</div>';
+    }).join('');
+  }
+  var tbody = document.getElementById('tabla-facturas');
+  if(!tbody) return;
+  if(!filt.length){
+    tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text-muted)">Sin facturas registradas</td></tr>'; return;
+  }
+  tbody.innerHTML = filt.map(function(f){
+    var estado=f.estado; var alertStyle=''; var diasTag='';
+    if(f.fechaVencimiento && estado!=='pagada'){
+      var dias=Math.ceil((new Date(f.fechaVencimiento)-new Date())/86400000);
+      if(dias<0){estado='vencida';alertStyle='background:#fff5f5';}
+      else if(dias<=3){alertStyle='background:#fffbeb';diasTag='<span style="color:#b45309;font-weight:700;font-size:.72rem"> ⚠️'+dias+'d</span>';}
+    }
+    var estBadge=estado==='pagada'?badge('✅ Pagada','badge-green'):estado==='vencida'?badge('🔴 Vencida','badge-red'):badge('⏳ Pendiente','badge-amber');
+    return '<tr style="'+alertStyle+'">'+
+      '<td><strong class="mono">'+f.numero+'</strong></td><td>'+f.proveedor+'</td>'+
+      '<td style="font-size:.8rem">'+(f.descripcion||'—')+'</td>'+
+      '<td class="mono">'+fmtMoney(f.neto)+'</td>'+
+      '<td class="mono">'+fmtMoney(f.ivaMonto||0)+' <span style="font-size:.7rem">('+f.ivaPct+'%)</span></td>'+
+      '<td><span class="mono" style="font-weight:700;color:var(--green-deep)">'+fmtMoney(f.total)+'</span></td>'+
+      '<td class="mono">'+fmtDate(f.fechaIngreso)+'</td>'+
+      '<td class="mono">'+(f.fechaVencimiento?fmtDate(f.fechaVencimiento):'—')+diasTag+'</td>'+
+      '<td>'+estBadge+'</td><td style="font-size:.78rem">'+(f.categoria||'—')+'</td>'+
+      '<td style="white-space:nowrap">'+
+        (estado!=='pagada'?'<button class="btn btn-secondary btn-sm" style="margin-right:3px" onclick="marcarFacturaPagada('+f.id+')">✅</button>':'')+
+        '<button class="btn btn-secondary btn-sm fact-e" data-id="'+f.id+'" style="margin-right:3px">✏️</button>'+
+        '<button class="btn btn-danger btn-sm fact-d" data-id="'+f.id+'">🗑</button>'+
+      '</td></tr>';
+  }).join('');
+  if(tbody) tbody.addEventListener('click',function(e){
+    var btn=e.target.closest('[data-id]'); if(!btn) return;
+    var id=parseInt(btn.dataset.id);
+    if(btn.classList.contains('fact-e')) openEdit('facturas',id);
+    else if(btn.classList.contains('fact-d')) del('facturas',id,renderFacturas);
+    else if(btn.classList.contains('fact-p')) marcarFacturaPagada(id);
+  });
+}
+
+function marcarFacturaPagada(id){
+  var f=(db.facturas||[]).find(function(x){return x.id===id;});
+  if(f){f.estado='pagada';save('facturas');renderFacturas();toast('✅ Factura pagada');}
+}
+
+// ========== VENTAS / INGRESOS ==========
+function calcVenta(){
+  var cant=parseFloat(document.getElementById('vt-cantidad').value)||0;
+  var precio=parseFloat(document.getElementById('vt-precio').value)||0;
+  var et=document.getElementById('vt-total'); if(et) et.value=cant*precio>0?fmtMoney(cant*precio):'$0';
+}
+
+function saveVenta(){
+  var fecha=document.getElementById('vt-fecha').value;
+  var precio=parseFloat(document.getElementById('vt-precio').value)||0;
+  if(!fecha||!precio){toast('⚠️ Fecha y precio son requeridos');return;}
+  if(!db.ventas) db.ventas=[];
+  var cant=parseFloat(document.getElementById('vt-cantidad').value)||0;
+  db.ventas.push({ id:genId(db.ventas), fecha:fecha,
+    compradorId:parseInt(document.getElementById('vt-comprador').value)||0,
+    producto:getCatValue('vt-producto','vt-producto-otro'),
+    cantidad:cant, unidad:document.getElementById('vt-unidad').value,
+    precio:precio, envLlenos:parseInt(document.getElementById('vt-env-llenos').value)||0,
+    envVacios:parseInt(document.getElementById('vt-env-vacios').value)||0,
+    total:cant*precio, notas:document.getElementById('vt-notas').value });
+  save('ventas'); closeModal('modal-venta');
+  ['vt-cantidad','vt-precio','vt-env-llenos','vt-env-vacios','vt-notas'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('vt-total').value='';
+  toast('✅ Venta registrada'); renderVentas(); renderDashboard();
+}
+
+function renderVentas(){
+  var compSel=document.getElementById('vt-comprador');
+  if(compSel){var cv=compSel.value;compSel.innerHTML='<option value="">Seleccionar...</option>'+db.compradores.map(function(c){return '<option value="'+c.id+'">'+c.nombre+'</option>';}).join('');compSel.value=cv;}
+  var d=document.getElementById('f-venta-d')?document.getElementById('f-venta-d').value:'';
+  var h=document.getElementById('f-venta-h')?document.getElementById('f-venta-h').value:'';
+  var filt=(db.ventas||[]).filter(function(v){return inRange(v.fecha,d,h);}).sort(function(a,b){return b.fecha.localeCompare(a.fecha);});
+  var totalIng=filt.reduce(function(s,v){return s+v.total;},0);
+  var totalGast=db.costos.filter(function(c){return inRange(c.fecha,d,h);}).reduce(function(s,c){return s+c.monto;},0);
+  var balance=totalIng-totalGast;
+  var resEl=document.getElementById('ventas-resumen');
+  if(resEl) resEl.innerHTML=
+    '<div class="cost-box"><div class="cost-box-val">'+fmtMoney(totalIng)+'</div><div class="cost-box-lbl">Ingresos</div></div>'+
+    '<div class="cost-box"><div class="cost-box-val">'+fmtMoney(totalGast)+'</div><div class="cost-box-lbl">Gastos</div></div>'+
+    '<div class="cost-box"><div class="cost-box-val" style="color:'+(balance>=0?'var(--green-mid)':'#e07070')+'">'+fmtMoney(Math.abs(balance))+'</div><div class="cost-box-lbl">'+(balance>=0?'Ganancia':'Pérdida')+'</div></div>'+
+    '<div class="cost-box"><div class="cost-box-val">'+filt.length+'</div><div class="cost-box-lbl">Ventas</div></div>';
+  var balEl=document.getElementById('ventas-balance');
+  if(balEl) balEl.innerHTML='<div style="text-align:center;padding:20px"><div style="font-size:2.5rem">'+(balance>=0?'📈':'📉')+'</div><div style="font-size:1.8rem;font-weight:700;color:'+(balance>=0?'#2d6a4f':'#e07070')+'">'+fmtMoney(Math.abs(balance))+'</div><div style="color:var(--text-muted);margin-top:4px">'+(balance>=0?'Ganancia neta':'Pérdida neta')+'</div></div>';
+  var tbody=document.getElementById('tabla-ventas');
+  if(!tbody) return;
+  if(!filt.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text-muted)">Sin ventas registradas</td></tr>';return;}
+  tbody.innerHTML=filt.map(function(v){
+    var comp=db.compradores.find(function(c){return c.id===v.compradorId;});
+    return '<tr><td class="mono">'+fmtDate(v.fecha)+'</td><td><strong>'+(comp?comp.nombre:'—')+'</strong></td>'+
+      '<td>'+badge(v.producto||'Otro')+'</td><td class="mono">'+v.cantidad+'</td><td>'+v.unidad+'</td>'+
+      '<td class="mono">'+fmtMoney(v.precio)+'/'+v.unidad+'</td>'+
+      '<td class="mono">'+v.envLlenos+'</td><td class="mono">'+v.envVacios+'</td>'+
+      '<td><span class="mono" style="font-weight:700;color:var(--green-deep)">'+fmtMoney(v.total)+'</span></td>'+
+      '<td style="white-space:nowrap">'+
+        '<button class="btn btn-secondary btn-sm vt-e" data-id="'+v.id+'" style="margin-right:3px">✏️</button>'+
+        '<button class="btn btn-danger btn-sm vt-d" data-id="'+v.id+'">🗑</button>'+
+      '</td></tr>';
+  }).join('');
+  var tfoot=document.getElementById('tabla-ventas-totales');
+  if(tfoot) tfoot.innerHTML='<tr style="background:#1a3325;color:#b7e4c7;font-weight:700"><td colspan="8" style="padding:10px 13px">TOTAL</td><td style="padding:10px 13px;font-family:monospace">'+fmtMoney(totalIng)+'</td><td></td></tr>';
+}
+
+// Extended openEdit for new modules
+var _origOpenEditFn = openEdit;
+function openEdit(module, id){
+  if(module==='adelantos'){
+    var a=(db.adelantos||[]).find(function(x){return x.id===id;});
+    if(!a) return;
+    _editId=id; _editModule='adelantos';
+    var wsel=document.getElementById('adel-worker'); if(wsel) wsel.value=a.workerId;
+    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
+    s('adel-fecha',a.fecha); s('adel-monto',a.monto); s('adel-periodo',a.periodo); s('adel-desc',a.desc);
+    openModal('modal-adelanto'); return;
+  }
+  if(module==='facturas'){
+    var f=(db.facturas||[]).find(function(x){return x.id===id;});
+    if(!f) return;
+    _editId=id; _editModule='facturas';
+    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
+    s('fact-num',f.numero); s('fact-prov',f.proveedor); s('fact-cliente',f.nCliente);
+    s('fact-venta',f.nVenta); s('fact-desc',f.descripcion); s('fact-neto',f.neto);
+    s('fact-fecha-ing',f.fechaIngreso); s('fact-fecha-venc',f.fechaVencimiento);
+    s('fact-notas',f.notas); s('fact-estado',f.estado);
+    var ti=document.getElementById('modal-factura-title'); if(ti) ti.textContent='✏️ Editar Factura';
+    calcFactura(); openModal('modal-factura'); return;
+  }
+  if(module==='ventas'){
+    var v=(db.ventas||[]).find(function(x){return x.id===id;});
+    if(!v) return;
+    var s=function(eid,val){var el=document.getElementById(eid);if(el)el.value=val||'';};
+    s('vt-fecha',v.fecha); s('vt-cantidad',v.cantidad); s('vt-precio',v.precio);
+    s('vt-env-llenos',v.envLlenos); s('vt-env-vacios',v.envVacios); s('vt-notas',v.notas);
+    if(document.getElementById('vt-comprador')) document.getElementById('vt-comprador').value=v.compradorId;
+    calcVenta(); openModal('modal-venta'); return;
+  }
+  if(typeof _origOpenEditFn === 'function') _origOpenEditFn(module, id);
+  else if(typeof saveEdit === 'function') {
+    // original openEdit from edit module
+    var item = db[module] ? db[module].find(function(x){return x.id===id;}) : null;
+    if(item){ _editId=id; _editModule=module; }
+  }
 }
 
 // ========== INIT ==========
