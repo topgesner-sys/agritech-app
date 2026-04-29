@@ -3206,7 +3206,7 @@ function renderCosechas(){
       <td>${c.foto?`<img src="${c.foto}" class="photo-thumb" onclick="showPhoto('${c.foto}')">`:badge('Sin foto','badge-gray')}</td>
       <td>${mono(fmtDate(c.fecha))}</td>
       <td style="max-width:120px;font-size:.78rem;color:var(--text-muted)">${c.obs||'—'}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="del('cosechas',${c.id},()=>{renderCosechas();renderDashboard()})">🗑</button></td>
+      <td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="openEdit('cosechas',${c.id})" style="margin-right:3px">✏️</button><button class="btn btn-danger btn-sm" onclick="del('cosechas',${c.id},()=>{renderCosechas();renderDashboard()})">🗑</button></td>
     </tr>`).join('')
     :'<tr><td colspan="10"><div style="text-align:center;padding:32px;color:var(--text-muted)"><div style="font-size:2.5rem;margin-bottom:8px">🌱</div><div style="font-weight:600;margin-bottom:6px">Sin cosechas registradas</div><div style="font-size:.82rem;margin-bottom:14px">Registra tu primera cosecha de palta o frutilla</div><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-cosecha\')">＋ Nueva Cosecha</button></div></td></tr>';
 }
@@ -3229,7 +3229,7 @@ function renderInsumos(){
     return true;
   }).sort((a,b)=>b.fecha.localeCompare(a.fecha));
   document.getElementById('tabla-insumos').innerHTML=filt.length
-    ?filt.map(i=>`<tr><td><strong>${i.nombre}</strong></td><td>${badge(i.tipo)}</td><td>${mono(i.cantidad.toLocaleString())}</td><td>${i.unidad}</td><td>${mono(fmtDate(i.fecha))}</td><td style="font-size:.78rem;color:var(--text-muted)">${i.obs||'—'}</td><td><button class="btn btn-danger btn-sm" onclick="del('insumos',${i.id},renderInsumos)">🗑</button></td></tr>`).join('')
+    ?filt.map(i=>`<tr><td><strong>${i.nombre}</strong></td><td>${badge(i.tipo)}</td><td>${mono(i.cantidad.toLocaleString())}</td><td>${i.unidad}</td><td>${mono(fmtDate(i.fecha))}</td><td style="font-size:.78rem;color:var(--text-muted)">${i.obs||'—'}</td><td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="openEdit('insumos',${i.id})" style="margin-right:3px">✏️</button><button class="btn btn-danger btn-sm" onclick="del('insumos',${i.id},renderInsumos)">🗑</button></td></tr>`).join('')
     :'<tr><td colspan="7"><div style="text-align:center;padding:32px;color:var(--text-muted)"><div style="font-size:2.5rem;margin-bottom:8px">🧪</div><div style="font-weight:600;margin-bottom:6px">Sin insumos registrados</div><div style="font-size:.82rem;margin-bottom:14px">Registra los fertilizantes, pesticidas y herbicidas usados</div><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-insumo\')">＋ Registrar Insumo</button></div></td></tr>';
 }
 
@@ -3247,7 +3247,7 @@ function renderInventario(){
       return `<tr><td><strong>${i.nombre}</strong></td><td>${badge(i.cat)}</td><td>${mono(i.cantidad+' '+i.unidad)}</td>
       <td style="min-width:90px"><div class="progress"><div class="progress-fill" style="width:${pct}%;background:${col}"></div></div><div style="font-size:.68rem;color:var(--text-muted)">${pct}%</div></td>
       <td>${i.proveedor}</td><td>${mono(fmtDate(i.fecha))}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="del('inventario',${i.id},()=>{renderInventario();checkAlertas()})">🗑</button></td></tr>`;
+      <td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="openEdit('inventario',${i.id})" style="margin-right:3px">✏️</button><button class="btn btn-danger btn-sm" onclick="del('inventario',${i.id},()=>{renderInventario();checkAlertas()})">🗑</button></td></tr>`;
     }).join('')
     :'<tr><td colspan="7"><div style="text-align:center;padding:32px;color:var(--text-muted)"><div style="font-size:2.5rem;margin-bottom:8px">📦</div><div style="font-weight:600;margin-bottom:6px">Sin productos en inventario</div><div style="font-size:.82rem;margin-bottom:14px">Agrega los productos y materiales del fundo</div><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-inventario\')">＋ Agregar Producto</button></div></td></tr>';
 }
@@ -3291,7 +3291,7 @@ function renderTrabajadores(){
   const tbody=document.getElementById('tabla-jornadas');
   const sorted=[...db.jornadas].sort((a,b)=>b.fecha.localeCompare(a.fecha));
   tbody.innerHTML=sorted.length
-    ?sorted.map(j=>{ const w=db.trabajadores.find(x=>x.id===j.workerId); return `<tr><td><strong>${w?w.nombre:'—'}</strong></td><td>${mono(fmtDate(j.fecha))}</td><td>${modoBadge(j.modo||'jornal')}</td><td style="font-size:.78rem">${buildJornadaDetalle(j)}</td><td>${j.sector}</td><td>${mono(fmtMoney(j.pago))}</td><td><button class="btn btn-danger btn-sm" onclick="del('jornadas',${j.id},renderTrabajadores)">🗑</button></td></tr>`; }).join('')
+    ?sorted.map(j=>{ const w=db.trabajadores.find(x=>x.id===j.workerId); return `<tr><td><strong>${w?w.nombre:'—'}</strong></td><td>${mono(fmtDate(j.fecha))}</td><td>${modoBadge(j.modo||'jornal')}</td><td style="font-size:.78rem">${buildJornadaDetalle(j)}</td><td>${j.sector}</td><td>${mono(fmtMoney(j.pago))}</td><td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="openEdit('jornadas',${j.id})" style="margin-right:3px">✏️</button><button class="btn btn-danger btn-sm" onclick="del('jornadas',${j.id},renderTrabajadores)">🗑</button></td></tr>`; }).join('')
     :'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Sin jornadas</td></tr>';
 }
 
@@ -3317,7 +3317,7 @@ function renderCostos(){
   charts['ch-cost-mes']=_safeChart('ch-cost-mes',cc('bar',months.map(m=>m.lbl),[{label:'Gastos',data:months.map(m=>db.costos.filter(c=>new Date(c.fecha).getMonth()===m.m&&new Date(c.fecha).getFullYear()===m.y).reduce((s,c)=>s+c.monto,0)),backgroundColor:'#e07070',borderRadius:4}],{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}));
 
   document.getElementById('tabla-costos').innerHTML=filt.length
-    ?filt.map(c=>`<tr><td><strong>${c.desc}</strong></td><td>${badge(c.cat)}</td><td>${mono(fmtMoney(c.monto))}</td><td>${mono(fmtDate(c.fecha))}</td><td style="font-size:.78rem;color:var(--text-muted)">${c.obs||'—'}</td><td><button class="btn btn-danger btn-sm" onclick="del('costos',${c.id},renderCostos)">🗑</button></td></tr>`).join('')
+    ?filt.map(c=>`<tr><td><strong>${c.desc}</strong></td><td>${badge(c.cat)}</td><td>${mono(fmtMoney(c.monto))}</td><td>${mono(fmtDate(c.fecha))}</td><td style="font-size:.78rem;color:var(--text-muted)">${c.obs||'—'}</td><td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="openEdit('costos',${c.id})" style="margin-right:3px">✏️</button><button class="btn btn-danger btn-sm" onclick="del('costos',${c.id},renderCostos)">🗑</button></td></tr>`).join('')
     :'<tr><td colspan="6"><div style="text-align:center;padding:32px;color:var(--text-muted)"><div style="font-size:2.5rem;margin-bottom:8px">💰</div><div style="font-weight:600;margin-bottom:6px">Sin gastos registrados</div><div style="font-size:.82rem;margin-bottom:14px">Registra los gastos y costos del fundo</div><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-costo\')">＋ Registrar Gasto</button></div></td></tr>';
 }
 
@@ -3344,7 +3344,7 @@ function renderClima(){
   ],{scales:{y:{beginAtZero:false}}}));
 
   document.getElementById('tabla-clima').innerHTML=sorted.length
-    ?sorted.map(c=>`<tr><td>${mono(fmtDate(c.fecha))}</td><td>${c.cond}</td><td>${mono(c.tmin+'°C')}</td><td>${mono(c.tmax+'°C')}</td><td>${mono(c.lluvia+' mm')}</td><td>${mono(c.viento+' km/h')}</td><td style="font-size:.78rem;color:var(--text-muted)">${c.obs||'—'}</td><td><button class="btn btn-danger btn-sm" onclick="del('clima',${c.id},renderClima)">🗑</button></td></tr>`).join('')
+    ?sorted.map(c=>`<tr><td>${mono(fmtDate(c.fecha))}</td><td>${c.cond}</td><td>${mono(c.tmin+'°C')}</td><td>${mono(c.tmax+'°C')}</td><td>${mono(c.lluvia+' mm')}</td><td>${mono(c.viento+' km/h')}</td><td style="font-size:.78rem;color:var(--text-muted)">${c.obs||'—'}</td><td style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="openEdit('clima',${c.id})" style="margin-right:3px">✏️</button><button class="btn btn-danger btn-sm" onclick="del('clima',${c.id},renderClima)">🗑</button></td></tr>`).join('')
     :'<tr><td colspan="8"><div style="text-align:center;padding:32px;color:var(--text-muted)"><div style="font-size:2.5rem;margin-bottom:8px">🌦️</div><div style="font-weight:600;margin-bottom:6px">Sin registros climáticos</div><div style="font-size:.82rem;margin-bottom:14px">Registra las condiciones del tiempo cada día</div><button class="btn btn-primary btn-sm" onclick="openModal(\'modal-clima\')">＋ Registrar Clima</button></div></td></tr>';
 }
 
@@ -6167,6 +6167,294 @@ function printLiqIndividual(){
   ventana.document.write(html);
   ventana.document.close();
   toast('🖨️ Preparando impresión...');
+}
+
+
+// ========== SISTEMA DE EDICIÓN UNIVERSAL ==========
+var _editId = null;
+var _editModule = null;
+
+function openEdit(module, id){
+  _editId = id;
+  _editModule = module;
+  var item = db[module].find(function(x){ return x.id === id; });
+  if(!item){ toast('⚠️ Registro no encontrado'); return; }
+  
+  if(module === 'cosechas')      openEditCosecha(item);
+  else if(module === 'insumos')  openEditInsumo(item);
+  else if(module === 'inventario') openEditInventario(item);
+  else if(module === 'jornadas') openEditJornada(item);
+  else if(module === 'costos')   openEditCosto(item);
+  else if(module === 'clima')    openEditClima(item);
+  else if(module === 'envases')  openEditEnvase(item);
+  else if(module === 'animales') openEditAnimal(item);
+  else if(module === 'sanidad')  openEditSanidad(item);
+}
+
+function saveEdit(){
+  if(!_editId || !_editModule) return;
+  var idx = db[_editModule].findIndex(function(x){ return x.id === _editId; });
+  if(idx < 0){ toast('⚠️ No se encontró el registro'); return; }
+  
+  if(_editModule === 'cosechas')   saveEditCosecha(idx);
+  else if(_editModule === 'insumos')    saveEditInsumo(idx);
+  else if(_editModule === 'inventario') saveEditInventario(idx);
+  else if(_editModule === 'jornadas')   saveEditJornada(idx);
+  else if(_editModule === 'costos')     saveEditCosto(idx);
+  else if(_editModule === 'clima')      saveEditClima(idx);
+  else if(_editModule === 'envases')    saveEditEnvase(idx);
+  else if(_editModule === 'animales')   saveEditAnimal(idx);
+  else if(_editModule === 'sanidad')    saveEditSanidad(idx);
+  _editId = null; _editModule = null;
+}
+
+// --- COSECHA ---
+function openEditCosecha(item){
+  var s = function(id,v){ var el=document.getElementById(id); if(el) el.value=v||''; };
+  s('c-tipo', item.tipo); toggleCamposCosecha();
+  s('c-kg', item.kg||0); s('c-sector', item.sector);
+  s('c-bins', item.bins||0); s('c-c1', item.c1||0); s('c-c2', item.c2||0);
+  s('c-fecha', item.fecha); s('c-obs', item.obs);
+  var title = document.querySelector('#modal-cosecha .modal-title');
+  if(title) title.textContent = '✏️ Editar Cosecha';
+  var btn = document.querySelector('#modal-cosecha .btn-primary');
+  if(btn){ btn.textContent='💾 Guardar cambios'; btn.setAttribute('onclick','saveEdit()'); }
+  openModal('modal-cosecha');
+}
+function saveEditCosecha(idx){
+  db.cosechas[idx].tipo    = document.getElementById('c-tipo').value;
+  db.cosechas[idx].kg      = parseFloat(document.getElementById('c-kg').value)||0;
+  db.cosechas[idx].bins    = parseFloat(document.getElementById('c-bins').value)||0;
+  db.cosechas[idx].c1      = parseFloat(document.getElementById('c-c1').value)||0;
+  db.cosechas[idx].c2      = parseFloat(document.getElementById('c-c2').value)||0;
+  db.cosechas[idx].sector  = document.getElementById('c-sector').value;
+  db.cosechas[idx].fecha   = document.getElementById('c-fecha').value;
+  db.cosechas[idx].obs     = document.getElementById('c-obs').value;
+  save('cosechas'); closeModal('modal-cosecha');
+  resetEditModal('modal-cosecha','🍓 Registrar Cosecha','saveCosecha()');
+  toast('✅ Cosecha actualizada'); renderCosechas(); renderDashboard();
+}
+
+// --- INSUMO ---
+function openEditInsumo(item){
+  var s = function(id,v){ var el=document.getElementById(id); if(el) el.value=v||''; };
+  s('i-nom', item.nombre); s('i-tipo', item.tipo); s('i-cant', item.cantidad);
+  s('i-unidad', item.unidad); s('i-fecha', item.fecha); s('i-costo', item.costo||0); s('i-obs', item.obs);
+  var title = document.querySelector('#modal-insumo .modal-title');
+  if(title) title.textContent = '✏️ Editar Insumo';
+  var btn = document.querySelector('#modal-insumo .btn-primary');
+  if(btn){ btn.textContent='💾 Guardar cambios'; btn.setAttribute('onclick','saveEdit()'); }
+  openModal('modal-insumo');
+}
+function saveEditInsumo(idx){
+  db.insumos[idx].nombre   = document.getElementById('i-nom').value;
+  db.insumos[idx].tipo     = document.getElementById('i-tipo').value;
+  db.insumos[idx].cantidad = parseFloat(document.getElementById('i-cant').value)||0;
+  db.insumos[idx].unidad   = document.getElementById('i-unidad').value;
+  db.insumos[idx].fecha    = document.getElementById('i-fecha').value;
+  db.insumos[idx].costo    = parseFloat(document.getElementById('i-costo').value)||0;
+  db.insumos[idx].obs      = document.getElementById('i-obs').value;
+  save('insumos'); closeModal('modal-insumo');
+  resetEditModal('modal-insumo','🧪 Registrar Insumo','saveInsumo()');
+  toast('✅ Insumo actualizado'); renderInsumos();
+}
+
+// --- INVENTARIO ---
+function openEditInventario(item){
+  var s = function(id,v){ var el=document.getElementById(id); if(el) el.value=v||''; };
+  s('inv-nom', item.nombre); s('inv-cat', item.cat); s('inv-cant', item.cantidad);
+  s('inv-min', item.minimo||0); s('inv-unidad', item.unidad); s('inv-fecha', item.fecha); s('inv-prov', item.proveedor);
+  var title = document.querySelector('#modal-inventario .modal-title');
+  if(title) title.textContent = '✏️ Editar Inventario';
+  var btn = document.querySelector('#modal-inventario .btn-primary');
+  if(btn){ btn.textContent='💾 Guardar cambios'; btn.setAttribute('onclick','saveEdit()'); }
+  openModal('modal-inventario');
+}
+function saveEditInventario(idx){
+  db.inventario[idx].nombre    = document.getElementById('inv-nom').value;
+  db.inventario[idx].cat       = getCatValue('inv-cat','inv-cat-otro');
+  db.inventario[idx].cantidad  = parseFloat(document.getElementById('inv-cant').value)||0;
+  db.inventario[idx].minimo    = parseFloat(document.getElementById('inv-min').value)||0;
+  db.inventario[idx].unidad    = document.getElementById('inv-unidad').value;
+  db.inventario[idx].fecha     = document.getElementById('inv-fecha').value;
+  db.inventario[idx].proveedor = document.getElementById('inv-prov').value;
+  save('inventario'); closeModal('modal-inventario');
+  resetEditModal('modal-inventario','📦 Agregar al Inventario','saveInventario()');
+  toast('✅ Inventario actualizado'); renderInventario();
+}
+
+// --- JORNADA ---
+function openEditJornada(item){
+  var s = function(id,v){ var el=document.getElementById(id); if(el) el.value=v!==undefined?v:''; };
+  s('j-worker', item.workerId); s('j-fecha', item.fecha);
+  s('j-horas', item.horas||0); s('j-sector', item.sector);
+  s('j-precio-hora', item.precioHora||0); s('j-precio-bin', item.precioBin||0);
+  s('j-precio-palta-kg', item.precioPaltaKg||0); s('j-precio-c1', item.precioC1||0);
+  s('j-precio-c2', item.precioC2||0); s('j-precio-frut-kg', item.precioFrutKg||0);
+  s('j-palta-bins', item.paltaBins||0); s('j-palta-kg', item.paltaKg||0);
+  s('j-frut-c1', item.frutC1||0); s('j-frut-c2', item.frutC2||0); s('j-frut-kg', item.frutKg||0);
+  s('j-obs', item.obs);
+  // Set jornadaMode
+  if(typeof setJornadaMode === 'function') setJornadaMode(item.modo||'jornal');
+  var title = document.querySelector('#modal-jornada .modal-title');
+  if(title) title.textContent = '✏️ Editar Jornada';
+  var btn = document.querySelector('#modal-jornada .btn-primary');
+  if(btn){ btn.textContent='💾 Guardar cambios'; btn.setAttribute('onclick','saveEdit()'); }
+  openModal('modal-jornada');
+}
+function saveEditJornada(idx){
+  var horas = parseFloat(document.getElementById('j-horas').value)||0;
+  var ph = parseFloat(document.getElementById('j-precio-hora')?document.getElementById('j-precio-hora').value:0)||0;
+  var pb = parseFloat(document.getElementById('j-precio-bin')?document.getElementById('j-precio-bin').value:0)||0;
+  var ppkg = parseFloat(document.getElementById('j-precio-palta-kg')?document.getElementById('j-precio-palta-kg').value:0)||0;
+  var pc1 = parseFloat(document.getElementById('j-precio-c1')?document.getElementById('j-precio-c1').value:0)||0;
+  var pc2 = parseFloat(document.getElementById('j-precio-c2')?document.getElementById('j-precio-c2').value:0)||0;
+  var pfkg = parseFloat(document.getElementById('j-precio-frut-kg')?document.getElementById('j-precio-frut-kg').value:0)||0;
+  var bins = parseFloat(document.getElementById('j-palta-bins').value)||0;
+  var pkg  = parseFloat(document.getElementById('j-palta-kg').value)||0;
+  var c1   = parseFloat(document.getElementById('j-frut-c1').value)||0;
+  var c2   = parseFloat(document.getElementById('j-frut-c2').value)||0;
+  var fkg  = parseFloat(document.getElementById('j-frut-kg').value)||0;
+  var mod  = db.jornadas[idx].modo||'jornal';
+  var total = bins*pb + pkg*ppkg + c1*pc1 + c2*pc2 + fkg*pfkg;
+  if(mod==='jornal'||mod==='mixto') total += (document.getElementById('j-modalidad')&&document.getElementById('j-modalidad').value==='dia') ? ph : horas*ph;
+  db.jornadas[idx].horas = horas; db.jornadas[idx].sector = document.getElementById('j-sector').value;
+  db.jornadas[idx].paltaBins=bins; db.jornadas[idx].paltaKg=pkg;
+  db.jornadas[idx].frutC1=c1; db.jornadas[idx].frutC2=c2; db.jornadas[idx].frutKg=fkg;
+  db.jornadas[idx].precioBin=pb; db.jornadas[idx].precioPaltaKg=ppkg;
+  db.jornadas[idx].precioC1=pc1; db.jornadas[idx].precioC2=pc2; db.jornadas[idx].precioFrutKg=pfkg;
+  db.jornadas[idx].precioHora=ph; db.jornadas[idx].pago=total;
+  db.jornadas[idx].obs=document.getElementById('j-obs').value;
+  save('jornadas'); closeModal('modal-jornada');
+  resetEditModal('modal-jornada','⏱️ Registrar Jornada','saveJornada()');
+  toast('✅ Jornada actualizada'); renderTrabajadores();
+}
+
+// --- COSTO ---
+function openEditCosto(item){
+  var s = function(id,v){ var el=document.getElementById(id); if(el) el.value=v||''; };
+  s('ct-desc', item.desc); s('ct-cat', item.cat); s('ct-monto', item.monto); s('ct-fecha', item.fecha); s('ct-obs', item.obs);
+  var title = document.querySelector('#modal-costo .modal-title');
+  if(title) title.textContent = '✏️ Editar Gasto';
+  var btn = document.querySelector('#modal-costo .btn-primary');
+  if(btn){ btn.textContent='💾 Guardar cambios'; btn.setAttribute('onclick','saveEdit()'); }
+  openModal('modal-costo');
+}
+function saveEditCosto(idx){
+  db.costos[idx].desc   = document.getElementById('ct-desc').value;
+  db.costos[idx].cat    = getCatValue('ct-cat','ct-cat-otro');
+  db.costos[idx].monto  = parseFloat(document.getElementById('ct-monto').value)||0;
+  db.costos[idx].fecha  = document.getElementById('ct-fecha').value;
+  db.costos[idx].obs    = document.getElementById('ct-obs').value;
+  save('costos'); closeModal('modal-costo');
+  resetEditModal('modal-costo','💰 Registrar Gasto','saveCosto()');
+  toast('✅ Gasto actualizado'); renderCostos(); renderDashboard();
+}
+
+// --- CLIMA ---
+function openEditClima(item){
+  var s = function(id,v){ var el=document.getElementById(id); if(el) el.value=v||''; };
+  s('cl-fecha', item.fecha); s('cl-cond', item.cond); s('cl-tmin', item.tmin);
+  s('cl-tmax', item.tmax); s('cl-lluvia', item.lluvia||0); s('cl-viento', item.viento||0); s('cl-obs', item.obs);
+  var title = document.querySelector('#modal-clima .modal-title');
+  if(title) title.textContent = '✏️ Editar Clima';
+  var btn = document.querySelector('#modal-clima .btn-primary');
+  if(btn){ btn.textContent='💾 Guardar cambios'; btn.setAttribute('onclick','saveEdit()'); }
+  openModal('modal-clima');
+}
+function saveEditClima(idx){
+  db.clima[idx].fecha  = document.getElementById('cl-fecha').value;
+  db.clima[idx].cond   = document.getElementById('cl-cond').value;
+  db.clima[idx].tmin   = parseFloat(document.getElementById('cl-tmin').value)||0;
+  db.clima[idx].tmax   = parseFloat(document.getElementById('cl-tmax').value)||0;
+  db.clima[idx].lluvia = parseFloat(document.getElementById('cl-lluvia').value)||0;
+  db.clima[idx].viento = parseFloat(document.getElementById('cl-viento').value)||0;
+  db.clima[idx].obs    = document.getElementById('cl-obs').value;
+  save('clima'); closeModal('modal-clima');
+  resetEditModal('modal-clima','🌦️ Registrar Clima','saveClima()');
+  toast('✅ Clima actualizado'); renderClima();
+}
+
+// --- ENVASE ---
+function openEditEnvase(item){
+  populateEnvaseSelects();
+  var s = function(id,v){ var el=document.getElementById(id); if(el) el.value=v||''; };
+  s('env-comprador', item.compradorId); s('env-tipo', item.tipo);
+  s('env-movimiento', item.movimiento); s('env-cantidad', item.cantidad);
+  s('env-fecha', item.fecha); s('env-notas', item.notas);
+  var title = document.querySelector('#modal-envase .modal-title');
+  if(title) title.textContent = '✏️ Editar Movimiento de Envase';
+  var btn = document.querySelector('#modal-envase .btn-primary');
+  if(btn){ btn.textContent='💾 Guardar cambios'; btn.setAttribute('onclick','saveEdit()'); }
+  openModal('modal-envase');
+}
+function saveEditEnvase(idx){
+  db.envases[idx].compradorId = parseInt(document.getElementById('env-comprador').value)||0;
+  db.envases[idx].tipo        = document.getElementById('env-tipo').value;
+  db.envases[idx].movimiento  = document.getElementById('env-movimiento').value;
+  db.envases[idx].cantidad    = parseInt(document.getElementById('env-cantidad').value)||0;
+  db.envases[idx].fecha       = document.getElementById('env-fecha').value;
+  db.envases[idx].notas       = document.getElementById('env-notas').value;
+  save('envases'); closeModal('modal-envase');
+  resetEditModal('modal-envase','🧺 Registrar Movimiento de Envases','saveEnvase()');
+  toast('✅ Envase actualizado'); renderEnvases(); renderDashboard();
+}
+
+// --- ANIMAL ---
+function openEditAnimal(item){
+  var s = function(id,v){ var el=document.getElementById(id); if(el) el.value=v||''; };
+  s('an-nombre', item.nombre); s('an-especie', item.especieId);
+  s('an-sexo', item.sexo); s('an-peso', item.peso||0);
+  s('an-nacimiento', item.nacimiento); s('an-obs', item.obs);
+  var title = document.querySelector('#modal-animal .modal-title');
+  if(title) title.textContent = '✏️ Editar Animal';
+  var btn = document.querySelector('#modal-animal .btn-primary');
+  if(btn){ btn.textContent='💾 Guardar cambios'; btn.setAttribute('onclick','saveEdit()'); }
+  openModal('modal-animal');
+}
+function saveEditAnimal(idx){
+  db.animales[idx].nombre    = document.getElementById('an-nombre').value;
+  db.animales[idx].especieId = parseInt(document.getElementById('an-especie').value)||0;
+  db.animales[idx].sexo      = document.getElementById('an-sexo').value;
+  db.animales[idx].peso      = parseFloat(document.getElementById('an-peso').value)||0;
+  db.animales[idx].nacimiento= document.getElementById('an-nacimiento').value;
+  db.animales[idx].obs       = document.getElementById('an-obs').value;
+  save('animales'); closeModal('modal-animal');
+  resetEditModal('modal-animal','🐄 Registrar Animal','saveAnimal()');
+  toast('✅ Animal actualizado'); renderGanado();
+}
+
+// --- SANIDAD ---
+function openEditSanidad(item){
+  var s = function(id,v){ var el=document.getElementById(id); if(el) el.value=v||''; };
+  s('san-animal', item.animalId); s('san-tipo', item.tipo);
+  s('san-producto', item.producto||''); s('san-dosis', item.dosis||'');
+  s('san-fecha', item.fecha); s('san-prox', item.proxVencimiento||''); s('san-obs', item.obs||'');
+  var title = document.querySelector('#modal-sanidad .modal-title');
+  if(title) title.textContent = '✏️ Editar Sanidad';
+  var btn = document.querySelector('#modal-sanidad .btn-primary');
+  if(btn){ btn.textContent='💾 Guardar cambios'; btn.setAttribute('onclick','saveEdit()'); }
+  openModal('modal-sanidad');
+}
+function saveEditSanidad(idx){
+  db.sanidad[idx].animalId       = parseInt(document.getElementById('san-animal').value)||0;
+  db.sanidad[idx].tipo           = document.getElementById('san-tipo').value;
+  db.sanidad[idx].producto       = document.getElementById('san-producto').value;
+  db.sanidad[idx].dosis          = document.getElementById('san-dosis').value;
+  db.sanidad[idx].fecha          = document.getElementById('san-fecha').value;
+  db.sanidad[idx].proxVencimiento= document.getElementById('san-prox').value;
+  db.sanidad[idx].obs            = document.getElementById('san-obs').value;
+  save('sanidad'); closeModal('modal-sanidad');
+  resetEditModal('modal-sanidad','💉 Registrar Sanidad','saveSanidad()');
+  toast('✅ Sanidad actualizada'); renderSanidad();
+}
+
+// Helper to reset modal after edit
+function resetEditModal(modalId, title, onclickSave){
+  var titleEl = document.querySelector('#'+modalId+' .modal-title');
+  if(titleEl) titleEl.textContent = title;
+  var btn = document.querySelector('#'+modalId+' .btn-primary');
+  if(btn){ btn.textContent='💾 Guardar'; btn.setAttribute('onclick', onclickSave); }
 }
 
 // ========== INIT ==========
