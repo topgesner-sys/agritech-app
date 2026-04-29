@@ -605,7 +605,11 @@ textarea{resize:vertical;min-height:72px}
   <div class="view" id="view-trabajadores">
     <div class="section-header">
       <div><div class="section-title">👷 Trabajadores</div><div class="section-sub">Personal, jornadas y rendimiento</div></div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input type="text" id="buscar-trabajador" placeholder="🔍 Buscar trabajador..." 
+          oninput="renderTrabajadores()" 
+          style="padding:9px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;min-width:200px;outline:none"
+          onfocus="this.style.borderColor='var(--green-mid)'" onblur="this.style.borderColor='var(--border)'">
         <button class="btn btn-amber" onclick="showView('liquidaciones')">🧾 Liquidaciones</button>
         <button class="btn btn-secondary" onclick="openModal('modal-jornada')">＋ Jornada</button>
         <button class="btn btn-primary" onclick="openModal('modal-trabajador')">＋ Trabajador</button>
@@ -3501,11 +3505,21 @@ function renderTrabajadores(){
   updateWorkerSelects();
   var wg = document.getElementById('worker-grid');
   if(!wg) return;
-  
-  if(!db.trabajadores.length){
-    wg.innerHTML = '<div style="text-align:center;padding:40px;color:#6b7c6e;grid-column:1/-1"><div style="font-size:3rem;margin-bottom:12px">👷</div><div style="font-size:1rem;font-weight:600;color:#1a3325;margin-bottom:8px">No hay trabajadores registrados</div><div style="font-size:.85rem;margin-bottom:16px">Agrega tu primer trabajador para comenzar</div></div>';
+
+  // Filter by search term
+  var q = document.getElementById('buscar-trabajador') ? document.getElementById('buscar-trabajador').value.toLowerCase().trim() : '';
+  var lista = q ? db.trabajadores.filter(function(w){
+    return (w.nombre||'').toLowerCase().includes(q) ||
+           (w.rol||'').toLowerCase().includes(q) ||
+           (w.rut||'').toLowerCase().includes(q);
+  }) : db.trabajadores;
+
+  if(!lista.length){
+    wg.innerHTML = q
+      ? '<div style="text-align:center;padding:40px;color:#6b7c6e;grid-column:1/-1"><div style="font-size:2.5rem;margin-bottom:10px">🔍</div><div style="font-weight:600;color:#1a3325">No se encontró "'+q+'"</div><div style="font-size:.85rem;margin-top:6px">Intenta con otro nombre o RUT</div></div>'
+      : '<div style="text-align:center;padding:40px;color:#6b7c6e;grid-column:1/-1"><div style="font-size:3rem;margin-bottom:12px">👷</div><div style="font-size:1rem;font-weight:600;color:#1a3325;margin-bottom:8px">No hay trabajadores registrados</div><div style="font-size:.85rem;margin-bottom:16px">Agrega tu primer trabajador para comenzar</div></div>';
   } else {
-    var cards = db.trabajadores.map(function(w,i){
+    var cards = lista.map(function(w,i){
       var jorns = db.jornadas.filter(function(j){ return j.workerId===w.id; });
       var horas = jorns.reduce(function(s,j){ return s+(j.horas||0); }, 0);
       var pago  = jorns.reduce(function(s,j){ return s+(j.pago||0); }, 0);
@@ -3527,7 +3541,10 @@ function renderTrabajadores(){
           '<button class="btn btn-secondary btn-sm" style="flex:1" data-action="edit" data-id="'+w.id+'">✏️ Editar</button>'+
           '<button class="btn btn-danger btn-sm" style="flex:1" data-action="del" data-id="'+w.id+'">🗑 Eliminar</button>'+
         '</div>'+
-        '<button class="btn btn-primary btn-sm" style="width:100%;margin-top:6px" data-action="liq" data-id="'+w.id+'">💰 Ver Liquidación</button>'+
+        '<div style="display:flex;gap:6px;margin-top:6px">'+
+          '<button class="btn btn-primary btn-sm" style="flex:1" data-action="liq" data-id="'+w.id+'">💰 Liquidación</button>'+
+          '<button class="btn btn-secondary btn-sm" data-action="print" data-id="'+w.id+'">🖨️</button>'+
+        '</div>'+
       '</div>';
     }).join('');
     wg.innerHTML = cards;
@@ -3540,6 +3557,7 @@ function renderTrabajadores(){
       if(action==='edit') editTrabajador(id);
       else if(action==='del') del('trabajadores', id, renderTrabajadores);
       else if(action==='liq') verLiquidacionIndividual(id);
+      else if(action==='print') printResumenTrabajador(id);
     };
   }
 
@@ -6770,6 +6788,119 @@ function openEdit(module, id){
     if(item){ _editId=id; _editModule=module; }
   }
 }
+
+
+// ========== IMPRIMIR RESUMEN TRABAJADOR ==========
+function printResumenTrabajador(workerId){
+  var w = db.trabajadores.find(function(x){ return x.id===workerId; });
+  if(!w){ toast('\u26a0\ufe0f Trabajador no encontrado'); return; }
+  var emp = getEmpresa();
+  var hoy = new Date().toLocaleDateString('es-CL',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  var jornadas = (db.jornadas||[]).filter(function(j){ return j.workerId===workerId; })
+    .sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
+  var adelantos = (db.adelantos||[]).filter(function(a){ return a.workerId===workerId && !a.descontado; });
+  var totalPago  = jornadas.reduce(function(s,j){ return s+(j.pago||0); },0);
+  var totalAdel  = adelantos.reduce(function(s,a){ return s+(a.monto||0); },0);
+  var totalHoras = jornadas.reduce(function(s,j){ return s+(j.horas||0); },0);
+  var pagadas    = jornadas.filter(function(j){ return j.pagado; }).length;
+
+  var t = '\x3c'; // < character
+  var filas = jornadas.slice(0,50).map(function(j,i){
+    var det = [];
+    if(j.paltaBins>0) det.push(j.paltaBins+'BIN\xd7'+fmtMoney(j.precioBin||0));
+    if(j.paltaKg>0)   det.push(j.paltaKg+'kg plt\xd7'+fmtMoney(j.precioPaltaKg||0)+'/kg');
+    if(j.frutC1>0)    det.push(j.frutC1+'cj1\xd7'+fmtMoney(j.precioC1||0));
+    if(j.frutC2>0)    det.push(j.frutC2+'cj2\xd7'+fmtMoney(j.precioC2||0));
+    if(j.horas>0)     det.push(j.horas+'h\xd7'+fmtMoney(j.precioHora||0)+'/h');
+    var bg = i%2===0?'#fff':'#f5f5f5';
+    return t+'tr style="background:'+bg+'"'+'>'+
+      t+'td>'+fmtDate(j.fecha)+t+'/td>'+
+      t+'td style="font-size:10px">'+det.join(', ')+t+'/td>'+
+      t+'td style="text-align:right">'+(j.paltaBins||0)+t+'/td>'+
+      t+'td style="text-align:right">'+(j.frutC1||0)+'/'+(j.frutC2||0)+t+'/td>'+
+      t+'td style="text-align:right">'+(j.horas||0)+'h'+t+'/td>'+
+      t+'td style="text-align:right;font-weight:700">'+fmtMoney(j.pago||0)+t+'/td>'+
+      t+'td style="text-align:center">'+(j.pagado?'\u2705':'\u23f3')+t+'/td>'+
+    t+'/tr>';
+  }).join('');
+
+  var adelRows = adelantos.map(function(a){
+    return t+'tr>'+
+      t+'td>'+fmtDate(a.fecha)+t+'/td>'+
+      t+'td>'+(a.periodo||'\u2014')+t+'/td>'+
+      t+'td>'+(a.desc||'Adelanto')+t+'/td>'+
+      t+'td style="text-align:right;font-weight:700;color:#b91c1c">'+fmtMoney(a.monto)+t+'/td>'+
+    t+'/tr>';
+  }).join('');
+
+  var css = 'body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:16px}'+
+    '.hdr{display:flex;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:12px}'+
+    'h1{font-size:16px;margin:0}h2{font-size:12px;margin:10px 0 6px;text-transform:uppercase;letter-spacing:1px}'+
+    '.wbox{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;background:#f5f5f5;padding:10px;border-radius:4px;margin-bottom:10px}'+
+    '.f label{font-size:9px;text-transform:uppercase;color:#666;display:block}.f div{font-weight:700;font-size:12px}'+
+    '.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px}'+
+    '.sb{border:1px solid #ccc;padding:8px;text-align:center}.sb .v{font-size:14px;font-weight:700}.sb .l{font-size:8px;text-transform:uppercase;color:#666}'+
+    '.sb.neto{border:2px solid #000;background:#f0f0f0}.sb.neto .v{font-size:16px}'+
+    'table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:10px}'+
+    'thead th{background:#222;color:#fff;padding:6px 8px;text-align:left;font-size:9px}'+
+    'tbody td{padding:5px 8px;border-bottom:1px solid #ddd}'+
+    'tfoot td{background:#333;color:#fff;padding:6px 8px;font-weight:700}'+
+    '.wm{text-align:center;margin-top:16px;font-size:9px;color:#ccc;font-style:italic}'+
+    '@media print{@page{margin:1.2cm}body{padding:0}}';
+
+  var parts = [
+    '<!DOCTYPE html>',
+    t+'html>'+t+'head>'+t+'meta charset="UTF-8">',
+    t+'title>Resumen '+w.nombre+t+'/title>',
+    t+'style>'+css+t+'/style>'+t+'/head>',
+    t+'body>',
+    t+'div class="hdr">'+
+      t+'div>'+t+'h1>'+emp.nombre+t+'/h1>'+(emp.rut?t+'div style="font-size:10px">RUT: '+emp.rut+t+'/div>':'')+t+'/div>'+
+      t+'div style="text-align:right">'+t+'h1>RESUMEN DEL TRABAJADOR'+t+'/h1>'+t+'div style="font-size:10px">'+hoy+t+'/div>'+t+'/div>'+
+    t+'/div>',
+    t+'div class="wbox">'+
+      t+'div class="f">'+t+'label>Nombre'+t+'/label>'+t+'div>'+w.nombre+t+'/div>'+t+'/div>'+
+      t+'div class="f">'+t+'label>Cargo'+t+'/label>'+t+'div>'+(w.rol||'\u2014')+t+'/div>'+t+'/div>'+
+      t+'div class="f">'+t+'label>RUT'+t+'/label>'+t+'div>'+(w.rut||'\u2014')+t+'/div>'+t+'/div>'+
+      t+'div class="f">'+t+'label>Estado'+t+'/label>'+t+'div>'+(w.estado||'Activo')+t+'/div>'+t+'/div>'+
+    t+'/div>',
+    t+'div class="stats">'+
+      t+'div class="sb">'+t+'div class="v">'+jornadas.length+t+'/div>'+t+'div class="l">Jornadas'+t+'/div>'+t+'/div>'+
+      t+'div class="sb">'+t+'div class="v">'+totalHoras+'h'+t+'/div>'+t+'div class="l">Horas'+t+'/div>'+t+'/div>'+
+      t+'div class="sb">'+t+'div class="v">'+pagadas+t+'/div>'+t+'div class="l">Pagadas'+t+'/div>'+t+'/div>'+
+      t+'div class="sb">'+t+'div class="v">'+fmtMoney(totalAdel)+t+'/div>'+t+'div class="l">Adelantos'+t+'/div>'+t+'/div>'+
+      t+'div class="sb neto">'+t+'div class="v">'+fmtMoney(totalPago-totalAdel)+t+'/div>'+t+'div class="l">NETO A PAGAR'+t+'/div>'+t+'/div>'+
+    t+'/div>',
+    t+'h2>Jornadas'+(jornadas.length>50?' (últimas 50)':'')+t+'/h2>',
+    t+'table>'+t+'thead>'+t+'tr>'+
+      t+'th>Fecha'+t+'/th>'+t+'th>Desglose'+t+'/th>'+
+      t+'th style="text-align:right">BINs'+t+'/th>'+t+'th style="text-align:right">Cajas'+t+'/th>'+
+      t+'th style="text-align:right">Horas'+t+'/th>'+t+'th style="text-align:right">Pago'+t+'/th>'+
+      t+'th>Estado'+t+'/th>'+
+    t+'/tr>'+t+'/thead>'+t+'tbody>'+filas+t+'/tbody>'+
+    t+'tfoot>'+t+'tr>'+
+      t+'td colspan="5">TOTAL'+t+'/td>'+
+      t+'td style="text-align:right">'+fmtMoney(totalPago)+t+'/td>'+
+      t+'td>'+pagadas+'/'+jornadas.length+t+'/td>'+
+    t+'/tr>'+t+'/tfoot>'+t+'/table>',
+    adelantos.length ?
+      t+'h2>Adelantos Pendientes'+t+'/h2>'+
+      t+'table>'+t+'thead>'+t+'tr>'+
+        t+'th>Fecha'+t+'/th>'+t+'th>Per\xedodo'+t+'/th>'+t+'th>Descripci\xf3n'+t+'/th>'+t+'th>Monto'+t+'/th>'+
+      t+'/tr>'+t+'/thead>'+t+'tbody>'+adelRows+t+'/tbody>'+
+      t+'tfoot>'+t+'tr>'+t+'td colspan="3">TOTAL ADELANTOS'+t+'/td>'+t+'td style="text-align:right">'+fmtMoney(totalAdel)+t+'/td>'+t+'/tr>'+t+'/tfoot>'+t+'/table>' : '',
+    t+'div class="wm">'+emp.watermark+t+'/div>',
+    t+'/body>'+t+'/html>'
+  ];
+
+  var v = window.open('','_blank','width=900,height=700');
+  if(!v){ toast('\u26a0\ufe0f Permite ventanas emergentes'); return; }
+  v.document.write(parts.join(''));
+  v.document.close();
+  setTimeout(function(){ v.print(); }, 800);
+  toast('\ud83d\udda8\ufe0f Imprimiendo resumen de '+w.nombre);
+}
+
 
 // ========== INIT ==========
 function init(){
