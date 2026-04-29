@@ -2250,15 +2250,15 @@ textarea{resize:vertical;min-height:72px}
         <tr style="background:#1a3325;color:#b7e4c7">
           <th style="padding:10px 12px;text-align:left;font-size:.72rem;letter-spacing:1px">FECHA</th>
           <th style="padding:10px 12px;text-align:left;font-size:.72rem;letter-spacing:1px">TIPO</th>
-          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">PALTA BINs</th>
-          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">PALTA KG</th>
-          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">FRUT 1RA</th>
-          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">FRUT 2DA</th>
-          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">FRUT KG</th>
+          <th style="padding:10px 12px;text-align:left;font-size:.72rem;letter-spacing:1px">DESGLOSE</th>
+          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">BINs</th>
+          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">PLT KG</th>
+          <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">CJ 1/2</th>
           <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px">HORAS</th>
           <th style="padding:10px 12px;text-align:center;font-size:.72rem;letter-spacing:1px">SECTOR</th>
           <th style="padding:10px 12px;text-align:right;font-size:.72rem;letter-spacing:1px;background:#2d6a4f">PAGO</th>
           <th style="padding:10px 12px;text-align:center;font-size:.72rem;letter-spacing:1px">ESTADO</th>
+          <th style="padding:10px 12px;font-size:.72rem;letter-spacing:1px">ACCIÓN</th>
         </tr>
       </thead>
       <tbody id="liq-ind-tabla"></tbody>
@@ -6283,11 +6283,16 @@ function calcLiqIndividual(){
 function marcarTodosLiqInd(){
   var d = document.getElementById('liq-ind-d').value;
   var h = document.getElementById('liq-ind-h').value;
+  // Mark jornadas as paid
   db.jornadas.filter(function(j){ return j.workerId===_liqIndWorkerId && inRange(j.fecha,d,h); })
     .forEach(function(j){ j.pagado=true; });
   save('jornadas');
+  // Mark all pending adelantos as descontado
+  (db.adelantos||[]).filter(function(a){ return a.workerId===_liqIndWorkerId && !a.descontado; })
+    .forEach(function(a){ a.descontado=true; });
+  save('adelantos');
   calcLiqIndividual();
-  toast('✅ Todas las jornadas marcadas como pagadas');
+  toast('✅ Liquidación cerrada — jornadas pagadas y adelantos descontados');
 }
 
 function exportLiqIndCSV(){
@@ -6323,7 +6328,7 @@ function printLiqIndividual(){
   var jornadas = db.jornadas.filter(function(j){ return j.workerId===_liqIndWorkerId && inRange(j.fecha,d,h); })
     .sort(function(a,b){ return a.fecha.localeCompare(b.fecha); });
 
-  var adelantosList = db.adelantos.filter(function(a){ return a.workerId===_liqIndWorkerId && inRange(a.fecha,d,h); });
+  var adelantosList = (db.adelantos||[]).filter(function(a){ return a.workerId===_liqIndWorkerId && !a.descontado; }); // ALL pending adelantos regardless of date
   var totalAdelantos = adelantosList.reduce(function(s,a){ return s+(a.monto||0); },0);
   var totalPago = jornadas.reduce(function(s,j){ return s+(j.pago||0); },0);
   var netoPagar = totalPago - totalAdelantos;
