@@ -1337,6 +1337,7 @@ textarea{resize:vertical;min-height:72px}
       </div>
   </div>
 
+  </div>
   <!-- ======== EXPORTAR ======== -->
   <div class="view" id="view-exportar">
     <div class="section-header">
@@ -1356,7 +1357,7 @@ textarea{resize:vertical;min-height:72px}
     <div class="card"><div class="card-header"><div class="card-title">📊 Resumen General</div></div><div class="card-body" id="export-summary"></div></div>
   </div>
 
-  </div><!-- /content -->
+</div><!-- /content -->
 </main>
 
 
@@ -6126,9 +6127,7 @@ function renderEnvases(){
   renderCompradoresList();
   // Show hint if no compradores
   var hint = document.getElementById('envases-resumen');
-  if(hint && !db.compradores.length){
-    hint.innerHTML = '<div class="alert alert-info">ℹ️ <strong>Primero registra los compradores.</strong> Haz clic en <strong>🏢 Compradores</strong> para agregar las empresas que compran tu producción, luego podrás registrar movimientos de envases.</div>';
-  } else if(hint) {
+  if(hint) {
     hint.innerHTML = '';
   }
 
