@@ -6128,88 +6128,80 @@ function renderEnvases(){
 
 // ========== LIQUIDACIONES ==========
 function renderLiquidaciones(){
-  // Auto-set dates to this month if empty
   var dEl = document.getElementById('liq-d');
   var hEl = document.getElementById('liq-h');
+  var liqEl = document.getElementById('liq-worker');
+  var container = document.getElementById('liq-cards');
+  var statsEl = document.getElementById('liq-stats');
+  if(!container) return;
+
+  // Auto-set dates to this month if empty
   if(dEl && !dEl.value){
-    var now = new Date();
-    dEl.value = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01';
+    var n1 = new Date();
+    dEl.value = n1.getFullYear()+'-'+String(n1.getMonth()+1).padStart(2,'0')+'-01';
   }
   if(hEl && !hEl.value){
-    var now2 = new Date();
-    hEl.value = now2.toISOString().split('T')[0];
+    hEl.value = new Date().toISOString().split('T')[0];
   }
-
-  // Step 1: Read current selected value BEFORE touching the select
-  var liqWorkerEl = document.getElementById('liq-worker');
-  var selectedVal = liqWorkerEl ? liqWorkerEl.value : '';
-
-  // Step 2: Rebuild select with all active workers
-  if(liqWorkerEl){
-    liqWorkerEl.innerHTML = '<option value="">Todos los activos</option>' +
-      db.trabajadores.filter(function(w){ return w.estado==='Activo'; })
-        .map(function(w){ return '<option value="'+w.id+'">' + w.nombre + '</option>'; }).join('');
-    // Step 3: Restore previously selected value
-    if(selectedVal) liqWorkerEl.value = selectedVal;
-  }
-
-  // Step 4: Read wid AFTER select is rebuilt and value restored
-  var wid = liqWorkerEl ? parseInt(liqWorkerEl.value) || 0 : 0;
 
   var d = dEl ? dEl.value : '';
   var h = hEl ? hEl.value : '';
 
-  // Filter workers to show
-  var workers = db.trabajadores.filter(function(w){
-    if(w.estado !== 'Activo') return false;
-    if(wid && w.id !== wid) return false;
-    return true;
-  });
+  // Read selected worker ID directly — never rebuild the select here
+  // The select is populated by updateWorkerSelects() at init/worker-change
+  var widRaw = liqEl ? liqEl.value : '';
+  var wid = widRaw ? parseInt(widRaw) : 0;
 
-  var container = document.getElementById('liq-cards');
-  if(!container) return;
+  // Determine which workers to show
+  var workers;
+  if(wid){
+    // Single worker selected
+    workers = db.trabajadores.filter(function(w){ return w.id === wid; });
+  } else {
+    // All active workers
+    workers = db.trabajadores.filter(function(w){ return w.estado === 'Activo'; });
+  }
 
   if(!workers.length){
-    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)"><div style="font-size:2.5rem">👷</div><div style="margin-top:8px">No hay trabajadores activos</div></div>';
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)"><div style="font-size:2.5rem">👷</div><div style="font-weight:600;margin-top:8px">No se encontró el trabajador</div></div>';
+    if(statsEl) statsEl.innerHTML = '';
     return;
   }
 
-  // Summary stats
-  var allJornadas = db.jornadas.filter(function(j){ 
+  // Stats: count jornadas and total only for shown workers
+  var workerIds = workers.map(function(w){ return w.id; });
+  var shownJornadas = db.jornadas.filter(function(j){
     if(!inRange(j.fecha, d, h)) return false;
-    if(wid && j.workerId !== wid) return false;  // Filter by selected worker
+    if(workerIds.indexOf(j.workerId) < 0) return false;
     return true;
   });
-  var totalPago = allJornadas.reduce(function(s,j){ return s+j.pago; }, 0);
-  var statsEl = document.getElementById('liq-stats');
+  var totalPago = shownJornadas.reduce(function(s,j){ return s+(j.pago||0); }, 0);
+
   if(statsEl){
     statsEl.innerHTML = [
       ['👷', workers.length, 'Trabajadores'],
-      ['📋', allJornadas.length, 'Jornadas'],
+      ['📋', shownJornadas.length, 'Jornadas'],
       ['💰', fmtMoney(totalPago), 'Total a pagar'],
     ].map(function(s){
       return '<div class="stat-card" style="--accent:var(--green-mid)"><div class="stat-icon">'+s[0]+'</div><div class="stat-label">'+s[2]+'</div><div class="stat-value" style="font-size:1.5rem">'+s[1]+'</div></div>';
     }).join('');
   }
 
-  // Render each worker card
+  // Render card for each worker
   container.innerHTML = workers.map(function(w, wi){
     var jornadas = db.jornadas.filter(function(j){
       return j.workerId === w.id && inRange(j.fecha, d, h);
     }).sort(function(a,b){ return a.fecha.localeCompare(b.fecha); });
 
-    var totalWorker = jornadas.reduce(function(s,j){ return s+j.pago; }, 0);
-    var totalHoras  = jornadas.filter(function(j){ return j.horas>0; }).reduce(function(s,j){ return s+j.horas; }, 0);
+    var totalWorker = jornadas.reduce(function(s,j){ return s+(j.pago||0); }, 0);
+    var totalHoras  = jornadas.filter(function(j){ return j.horas>0; }).reduce(function(s,j){ return s+(j.horas||0); }, 0);
     var pagado = jornadas.filter(function(j){ return j.pagado; }).length;
-
     var color = wcolor(wi);
     var initials = w.nombre.charAt(0).toUpperCase();
 
-    // Build jornadas table
     var jornadasRows = jornadas.length ? jornadas.map(function(j){
-      var detalle = buildJornadaDetalle ? buildJornadaDetalle(j) : (j.tarea||'—');
-      var pagoCell = '<span class="mono" style="font-weight:700;color:var(--green-deep)">'+fmtMoney(j.pago)+'</span>';
-      var pagadoBtn = j.pagado ? 
+      var detalle = (typeof buildJornadaDetalle === 'function') ? buildJornadaDetalle(j) : (j.tarea||'—');
+      var pagadoBtn = j.pagado ?
         '<span class="badge badge-green">✅ Pagado</span>' :
         '<button class="btn btn-sm" style="background:#f0faf4;border:1px solid var(--border);font-size:.7rem" onclick="marcarPagado('+j.id+')">Marcar pagado</button>';
       return '<tr>'+
@@ -6217,7 +6209,7 @@ function renderLiquidaciones(){
         '<td>'+badge(j.modo||'jornal')+'</td>'+
         '<td style="font-size:.78rem">'+detalle+'</td>'+
         '<td>'+(j.sector||'—')+'</td>'+
-        '<td>'+pagoCell+'</td>'+
+        '<td><span class="mono" style="font-weight:700;color:var(--green-deep)">'+fmtMoney(j.pago||0)+'</span></td>'+
         '<td>'+pagadoBtn+'</td>'+
       '</tr>';
     }).join('') : '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-muted)">Sin jornadas en este período</td></tr>';
@@ -6225,7 +6217,7 @@ function renderLiquidaciones(){
     return '<div class="card" style="margin-bottom:18px">'+
       '<div class="card-header" style="background:'+color+'15">'+
         '<div style="display:flex;align-items:center;gap:12px">'+
-          (w.foto ? 
+          (w.foto ?
             '<img src="'+w.foto+'" style="width:44px;height:44px;border-radius:50%;object-fit:cover">' :
             '<div style="width:44px;height:44px;border-radius:50%;background:'+color+';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff">'+initials+'</div>'
           )+
@@ -6254,18 +6246,16 @@ function renderLiquidaciones(){
     '</div>';
   }).join('');
 
-  // Attach event listeners using data attributes
-  if(container){
-    container.querySelectorAll('.liq-csv-btn').forEach(function(btn){
-      btn.addEventListener('click', function(){ exportLiqCSV(parseInt(btn.dataset.wid), btn.dataset.d, btn.dataset.h); });
-    });
-    container.querySelectorAll('.liq-print-btn').forEach(function(btn){
-      btn.addEventListener('click', function(){ if(typeof printLiquidacion==='function') printLiquidacion(parseInt(btn.dataset.wid), btn.dataset.d, btn.dataset.h); });
-    });
-    container.querySelectorAll('.liq-pagado-btn').forEach(function(btn){
-      btn.addEventListener('click', function(){ marcarTodosPagados(parseInt(btn.dataset.wid), btn.dataset.d, btn.dataset.h); });
-    });
-  }
+  // Attach event listeners
+  container.querySelectorAll('.liq-csv-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){ exportLiqCSV(parseInt(btn.dataset.wid), btn.dataset.d, btn.dataset.h); });
+  });
+  container.querySelectorAll('.liq-print-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){ if(typeof printLiquidacion==='function') printLiquidacion(parseInt(btn.dataset.wid), btn.dataset.d, btn.dataset.h); });
+  });
+  container.querySelectorAll('.liq-pagado-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){ marcarTodosPagados(parseInt(btn.dataset.wid), btn.dataset.d, btn.dataset.h); });
+  });
 }
 
 function marcarPagado(jornadaId){
