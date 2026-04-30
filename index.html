@@ -5436,7 +5436,7 @@ function guardarAsistenciaNueva(){
   var workers=lista.map(function(w){
     var cb=document.getElementById('asist-check-'+w.id);
     var nota=document.getElementById('asist-nota-'+w.id);
-    return {id:w.id,nombre:w.nombre,rol:w.rol||'—',presente:cb?cb.checked:true,nota:nota?nota.value:''};;
+    return {id:w.id,nombre:w.nombre,rol:w.rol||'—',presente:cb?cb.checked:true,nota:nota?nota.value:''};
   });
   if(!db.asistencia) db.asistencia=[];
   db.asistencia=db.asistencia.filter(function(a){return a.fecha!==fecha;});
