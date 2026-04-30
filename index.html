@@ -1189,9 +1189,11 @@ textarea{resize:vertical;min-height:72px}
     <div class="card">
       <div class="card-header">
         <div class="card-title">📅 Historial de Asistencias</div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <input type="date" id="asist-hist-d" onchange="renderHistorialAsistencia()" style="padding:6px 10px;font-size:.8rem;border:1.5px solid var(--border);border-radius:6px">
           <input type="date" id="asist-hist-h" onchange="renderHistorialAsistencia()" style="padding:6px 10px;font-size:.8rem;border:1.5px solid var(--border);border-radius:6px">
+          <button class="btn btn-secondary btn-sm" onclick="limpiarFiltroAsist()">✕ Ver todo</button>
+          <button class="btn btn-primary btn-sm" onclick="renderHistorialAsistencia()">🔄 Actualizar</button>
         </div>
       </div>
       <div class="card-body" style="padding:0"><div class="table-wrap">
@@ -3029,14 +3031,15 @@ function showView(id){
   document.getElementById('pageTitle').textContent = VIEW_TITLES[id]||id;
   const renders={dashboard:renderDashboard,facturas:renderFacturas,ventas:renderVentas,adelantos:renderAdelantos,asistencia:function(){ var el=document.getElementById("asist-fecha"); if(el&&!el.value) el.value=today(); renderAsistencia(); renderHistorialAsistencia(); },envases:renderEnvases,compradores:renderCompradoresView,cosechas:renderCosechas,insumos:renderInsumos,inventario:renderInventario,trabajadores:renderTrabajadores,liquidaciones:renderLiquidaciones,costos:renderCostos,clima:renderClima,calendario:renderCalendario,alertas:renderAlertas,reportes:renderReportes,exportar:renderExport,ganado:renderGanado,sanidad:renderSanidad,reproduccion:renderReproduccion,creditos:renderCreditos,presupuesto:renderPresupuesto};
   if(renders[id]) renders[id]();
-  // Re-render after 1.5s to catch Firebase data if it arrives late
+  // Re-render after delay to catch Firebase data if it arrives late
   // EXCEPTION: liquidaciones - delayed render resets worker selection
   if(id !== 'dashboard' && id !== 'liquidaciones'){
+    var delayMs = (id === 'asistencia') ? 2500 : 1500;
     setTimeout(function(){
       if(document.getElementById('view-'+id) && document.getElementById('view-'+id).classList.contains('active')){
         try{ if(renders[id]) renders[id](); } catch(e){}
       }
-    }, 1500);
+    }, delayMs);
   }
   closeSidebar();
 }
@@ -5492,10 +5495,13 @@ function renderAsistencia(){
 function renderHistorialAsistencia(){
   var d = document.getElementById('asist-hist-d') ? document.getElementById('asist-hist-d').value : '';
   var h = document.getElementById('asist-hist-h') ? document.getElementById('asist-hist-h').value : '';
-  var filt = (db.asistencia||[]).filter(function(a){ return inRange(a.fecha, d, h); })
+  var allAsist = db.asistencia || [];
+  var filt = allAsist.filter(function(a){ return inRange(a.fecha, d, h); })
     .sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
   var tbody = document.getElementById('asist-hist-tabla');
   if(!tbody) return;
+  // Debug: log how many records we have
+  console.log('[Asistencia] Total registros:', allAsist.length, 'Filtrados:', filt.length, 'Filtro d='+d+' h='+h);
   tbody.innerHTML = filt.length ? filt.map(function(a){
     var presentes = a.presentes !== undefined ? a.presentes :
                     (a.workers ? a.workers.filter(function(w){return w.presente;}).length : 0);
@@ -5512,6 +5518,15 @@ function renderHistorialAsistencia(){
       '</td>' +
     '</tr>';
   }).join('') : '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Sin asistencias registradas. Usa + Nueva Asistencia para registrar.</td></tr>';
+}
+
+
+function limpiarFiltroAsist(){
+  var d = document.getElementById('asist-hist-d');
+  var h = document.getElementById('asist-hist-h');
+  if(d) d.value = '';
+  if(h) h.value = '';
+  renderHistorialAsistencia();
 }
 
 // ========== AUTH & MULTI-USER SYSTEM ==========
