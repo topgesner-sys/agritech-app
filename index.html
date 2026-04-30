@@ -6130,20 +6130,24 @@ function renderLiquidaciones(){
     hEl.value = now2.toISOString().split('T')[0];
   }
 
-  // READ wid FIRST before rebuilding select (prevents value loss on rebuild)
+  // Step 1: Read current selected value BEFORE touching the select
   var liqWorkerEl = document.getElementById('liq-worker');
-  var wid = liqWorkerEl ? parseInt(liqWorkerEl.value) || 0 : 0;
+  var selectedVal = liqWorkerEl ? liqWorkerEl.value : '';
 
-  // Rebuild select preserving the selected worker
+  // Step 2: Rebuild select with all active workers
   if(liqWorkerEl){
     liqWorkerEl.innerHTML = '<option value="">Todos los activos</option>' +
       db.trabajadores.filter(function(w){ return w.estado==='Activo'; })
-        .map(function(w){ return '<option value="'+w.id+'"'+(w.id===wid?' selected':'')+'>'+w.nombre+'</option>'; }).join('');
+        .map(function(w){ return '<option value="'+w.id+'">' + w.nombre + '</option>'; }).join('');
+    // Step 3: Restore previously selected value
+    if(selectedVal) liqWorkerEl.value = selectedVal;
   }
+
+  // Step 4: Read wid AFTER select is rebuilt and value restored
+  var wid = liqWorkerEl ? parseInt(liqWorkerEl.value) || 0 : 0;
 
   var d = dEl ? dEl.value : '';
   var h = hEl ? hEl.value : '';
-  // wid is already set above - do NOT re-read from DOM after rebuilding select
 
   // Filter workers to show
   var workers = db.trabajadores.filter(function(w){
