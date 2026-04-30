@@ -2735,7 +2735,7 @@ function loadFromCloud(){
               envases:renderEnvases,compradores:renderCompradoresView, asistencia:function(){ 
                 var el=document.getElementById('asist-fecha'); 
                 if(el&&!el.value) el.value=today(); 
-                renderAsistencia(); renderHistorialAsistencia(); 
+                renderAsistencia(); renderHistorialAsistencia(); renderHistorialAsistencia(); 
               },
               adelantos:renderAdelantos, facturas:renderFacturas, ventas:renderVentas,
               clima:renderClima, calendario:renderCalendario,
@@ -2804,7 +2804,12 @@ function refreshCurrentView(changedKey){
       reproduccion: renderReproduccion,
       creditos: renderCreditos,
       presupuesto: renderPresupuesto,
-      asistencia: renderAsistencia,
+      asistencia: function(){ 
+        var el=document.getElementById('asist-fecha'); 
+        if(el&&!el.value) el.value=today(); 
+        renderAsistencia(); 
+        renderHistorialAsistencia(); 
+      },
       envases: renderEnvases,
       adelantos: renderAdelantos,
       facturas: renderFacturas,
