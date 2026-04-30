@@ -2660,12 +2660,14 @@ function loadFromCloud(){
           // OR if the data is genuinely different (edits/deletions)
           var newStr = JSON.stringify(newItems);
           var localStr = JSON.stringify(localItems);
-          if(newStr !== localStr && newItems.length >= localItems.length - 1){
-            db[key] = newItems;
-            try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
+          if(newItems.length >= localItems.length - 1){
+            if(newStr !== localStr){
+              db[key] = newItems;
+              try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
+            }
+            // Always refresh the view regardless of whether data changed
             refreshCurrentView(key);
           } else if(newItems.length < localItems.length - 1){
-            // Firebase has significantly fewer items - likely not synced yet
             console.warn('Firebase has fewer items for', key, '- keeping local data');
           }
         } else if(!doc.exists && (db[key]||[]).length > 0){
@@ -2984,6 +2986,14 @@ function showView(id){
   document.getElementById('pageTitle').textContent = VIEW_TITLES[id]||id;
   const renders={dashboard:renderDashboard,facturas:renderFacturas,ventas:renderVentas,adelantos:renderAdelantos,asistencia:function(){ var el=document.getElementById("asist-fecha"); if(el&&!el.value) el.value=today(); renderAsistencia(); renderHistorialAsistencia(); },envases:renderEnvases,cosechas:renderCosechas,insumos:renderInsumos,inventario:renderInventario,trabajadores:renderTrabajadores,liquidaciones:renderLiquidaciones,costos:renderCostos,clima:renderClima,calendario:renderCalendario,alertas:renderAlertas,reportes:renderReportes,exportar:renderExport,ganado:renderGanado,sanidad:renderSanidad,reproduccion:renderReproduccion,creditos:renderCreditos,presupuesto:renderPresupuesto};
   if(renders[id]) renders[id]();
+  // Re-render after 1.5s to catch Firebase data if it arrives late
+  if(id !== 'dashboard'){
+    setTimeout(function(){
+      if(document.getElementById('view-'+id) && document.getElementById('view-'+id).classList.contains('active')){
+        try{ if(renders[id]) renders[id](); } catch(e){}
+      }
+    }, 1500);
+  }
   closeSidebar();
 }
 
@@ -5391,9 +5401,9 @@ function renderAsistencia(){
 
 
 function renderHistorialAsistencia(){
-  var d = document.getElementById('asist-hist-d').value;
-  var h = document.getElementById('asist-hist-h').value;
-  var filt = db.asistencia.filter(function(a){ return inRange(a.fecha, d, h); })
+  var d = document.getElementById('asist-hist-d') ? document.getElementById('asist-hist-d').value : '';
+  var h = document.getElementById('asist-hist-h') ? document.getElementById('asist-hist-h').value : '';
+  var filt = (db.asistencia||[]).filter(function(a){ return inRange(a.fecha, d, h); })
     .sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
   
   var tbody = document.getElementById('asist-hist-tabla');
