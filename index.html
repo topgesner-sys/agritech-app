@@ -2504,6 +2504,7 @@ textarea{resize:vertical;min-height:72px}
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-animal')"><span style="font-size:18px">🐄</span> Registrar Animal</button>
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-sanidad')"><span style="font-size:18px">💉</span> Evento Sanitario</button>
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-evento')"><span style="font-size:18px">📅</span> Nueva Tarea</button>
+    <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');showView('asistencia');setTimeout(abrirNuevaAsistencia,200)"><span style="font-size:18px">📋</span> Registrar Asistencia</button>
   </div>
   <div class="form-actions" style="border:none;margin-top:10px;padding-top:0"><button class="btn btn-secondary" onclick="closeModal('modal-quick')">Cancelar</button></div>
 </div>
@@ -2931,7 +2932,15 @@ function closeModal(id){
     el.classList.remove('open');
   } 
 }
-function openQuickAdd(){ openModal('modal-quick'); }
+function openQuickAdd(){
+  // If on asistencia view, open asistencia modal directly
+  var activeView = document.querySelector('.view.active');
+  if(activeView && activeView.id === 'view-asistencia'){
+    abrirNuevaAsistencia();
+    return;
+  }
+  openModal('modal-quick');
+}
 // Setup modal backdrop close on click
 (function setupModals(){
   var backdrops = document.querySelectorAll('.modal-backdrop');
