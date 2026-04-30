@@ -1563,6 +1563,33 @@ textarea{resize:vertical;min-height:72px}
         </div>
       </div>
     </div>
+    <!-- CARGA -->
+    <div style="background:#eef2ff;border-radius:8px;padding:12px;margin-top:10px;border:1px solid #c7d2fe">
+      <div style="font-weight:700;font-size:.82rem;color:#3730a3;margin-bottom:8px">🚛 Carga de Camión</div>
+      <div class="form-grid cols-3">
+        <div class="form-group">
+          <label>Cantidad cargada</label>
+          <input type="number" id="j-carga-cant" placeholder="0" min="0" step="1" oninput="calcJornal()">
+        </div>
+        <div class="form-group">
+          <label>Unidad</label>
+          <select id="j-carga-unidad" onchange="calcJornal()">
+            <option value="BIN">BINs</option>
+            <option value="caja">Cajas</option>
+            <option value="kg">Kilogramos</option>
+            <option value="camion">Por camión</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Precio por unidad ($)</label>
+          <input type="number" id="j-precio-carga" placeholder="0" min="0" step="1" oninput="calcJornal()">
+        </div>
+        <div class="form-group" style="grid-column:3">
+          <label>Subtotal carga</label>
+          <input type="text" id="j-sub-carga" readonly style="background:#e0e7ff;font-weight:700;color:#3730a3">
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- JORNAL -->
@@ -3100,6 +3127,7 @@ function prefillJornadaPrices(){
   setIfEmpty('j-precio-c2', w.tFrutC2||0);
   setIfEmpty('j-precio-frut-kg', w.tFrutKg||0);
   setIfEmpty('j-precio-hora', w.tarifa||0);
+  setIfEmpty('j-precio-carga', w.tarifaCarga||0);
 }
 
 function calcJornal(){
@@ -3135,6 +3163,11 @@ function calcJornal(){
   var subFrutKg   = frutKg * precioFrutKg;
   var subJornal   = modalidad === 'dia' ? precioHora : horas * precioHora;
 
+  // Carga
+  var cargaCant   = parseFloat(document.getElementById('j-carga-cant') ? document.getElementById('j-carga-cant').value : 0) || 0;
+  var precioCarga = parseFloat(document.getElementById('j-precio-carga') ? document.getElementById('j-precio-carga').value : 0) || 0;
+  var subCarga    = cargaCant * precioCarga;
+
   // Show subtotals in readonly fields
   var setVal = function(id, val){ var el=document.getElementById(id); if(el) el.value = val>0 ? fmtMoney(val) : ''; };
   setVal('j-sub-bins', subBins);
@@ -3143,6 +3176,7 @@ function calcJornal(){
   setVal('j-sub-c2', subC2);
   setVal('j-sub-frut-kg', subFrutKg);
   setVal('j-sub-jornal', subJornal);
+  setVal('j-sub-carga', subCarga);
 
   // Build breakdown
   var items = [], total = 0;
@@ -3151,6 +3185,11 @@ function calcJornal(){
   if(frutC1>0 && precioC1>0){ items.push({label:'🍓 '+frutC1+' cajas 1ra × '+fmtMoney(precioC1), amount:subC1}); total+=subC1; }
   if(frutC2>0 && precioC2>0){ items.push({label:'🍓 '+frutC2+' cajas 2da × '+fmtMoney(precioC2), amount:subC2}); total+=subC2; }
   if(frutKg>0 && precioFrutKg>0){ items.push({label:'🍓 '+frutKg+'kg frutilla × '+fmtMoney(precioFrutKg)+'/kg', amount:subFrutKg}); total+=subFrutKg; }
+  if(cargaCant>0 && precioCarga>0){
+    var cargaUnidad = document.getElementById('j-carga-unidad') ? document.getElementById('j-carga-unidad').value : 'unidad';
+    items.push({label:'🚛 '+cargaCant+' '+cargaUnidad+' carga × '+fmtMoney(precioCarga), amount:subCarga});
+    total+=subCarga;
+  }
   if((jornadaMode==='jornal'||jornadaMode==='mixto') && precioHora>0){
     var jorLabel = modalidad==='dia' ? '⏱️ Día completo' : '⏱️ '+horas+'h × '+fmtMoney(precioHora)+'/h';
     items.push({label:jorLabel, amount:subJornal}); total+=subJornal;
@@ -3190,6 +3229,9 @@ function saveJornada(){
   var precioC2      = parseFloat(document.getElementById('j-precio-c2') ? document.getElementById('j-precio-c2').value : 0)||0;
   var precioFrutKg  = parseFloat(document.getElementById('j-precio-frut-kg') ? document.getElementById('j-precio-frut-kg').value : 0)||0;
   var precioHora    = parseFloat(document.getElementById('j-precio-hora') ? document.getElementById('j-precio-hora').value : 0)||0;
+  var cargaCantS    = parseFloat(document.getElementById('j-carga-cant') ? document.getElementById('j-carga-cant').value : 0)||0;
+  var precioCargaS  = parseFloat(document.getElementById('j-precio-carga') ? document.getElementById('j-precio-carga').value : 0)||0;
+  var cargaUnidadS  = document.getElementById('j-carga-unidad') ? document.getElementById('j-carga-unidad').value : 'BIN';
 
   // Calculate total using manual prices
   var total = 0;
@@ -3198,6 +3240,7 @@ function saveJornada(){
   total += frutC1 * precioC1;
   total += frutC2 * precioC2;
   total += frutKg * precioFrutKg;
+  total += cargaCantS * precioCargaS;
   if(jornadaMode==='jornal'||jornadaMode==='mixto'){
     total += modalidad==='dia' ? precioHora : horas * precioHora;
   }
@@ -3219,6 +3262,7 @@ function saveJornada(){
     precioC1: precioC1, precioC2: precioC2, precioFrutKg: precioFrutKg,
     precioHora: precioHora,
     pago: total,
+    cargaCant: cargaCantS, precioCarga: precioCargaS, cargaUnidad: cargaUnidadS,
     tarea: document.getElementById('j-tarea') ? document.getElementById('j-tarea').value : 'Cosecha',
     sector: document.getElementById('j-sector').value||'—',
     obs: document.getElementById('j-obs').value
@@ -3228,7 +3272,8 @@ function saveJornada(){
   // Clear fields
   ['j-palta-bins','j-palta-kg','j-frut-c1','j-frut-c2','j-frut-kg','j-horas','j-sector','j-obs',
    'j-precio-bin','j-precio-palta-kg','j-precio-c1','j-precio-c2','j-precio-frut-kg','j-precio-hora',
-   'j-sub-bins','j-sub-palta-kg','j-sub-c1','j-sub-c2','j-sub-frut-kg','j-sub-jornal'].forEach(function(id){
+   'j-carga-cant','j-precio-carga',
+   'j-sub-bins','j-sub-palta-kg','j-sub-c1','j-sub-c2','j-sub-frut-kg','j-sub-jornal','j-sub-carga'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
   var bd=document.getElementById('j-breakdown'); if(bd) bd.style.display='none';
@@ -6269,6 +6314,7 @@ function saveTrabajador(){
         tel: document.getElementById('w-tel').value,
         tarifa: parseFloat(document.getElementById('w-tarifa').value)||0,
         tarifaDia: parseFloat(document.getElementById('w-tarifa-dia')?document.getElementById('w-tarifa-dia').value:0)||0,
+        tarifaCarga: parseFloat(document.getElementById('w-tarifa-carga')?document.getElementById('w-tarifa-carga').value:0)||0,
         tPaltaBin: parseFloat(document.getElementById('w-t-palta-bin')?document.getElementById('w-t-palta-bin').value:0)||0,
         tPaltaKg: parseFloat(document.getElementById('w-t-palta-kg')?document.getElementById('w-t-palta-kg').value:0)||0,
         tFrutC1: parseFloat(document.getElementById('w-t-frut-c1')?document.getElementById('w-t-frut-c1').value:0)||0,
@@ -6945,6 +6991,7 @@ function printResumenTrabajador(workerId){
   var filas = jornadas.slice(0,50).map(function(j,i){
     var det = [];
     if(j.paltaBins>0) det.push(j.paltaBins+'BIN\xd7'+fmtMoney(j.precioBin||0));
+    if((j.cargaCant||0)>0) det.push('\ud83d\ude9b '+(j.cargaCant)+(j.cargaUnidad||'')+'\xd7'+fmtMoney(j.precioCarga||0));
     if(j.paltaKg>0)   det.push(j.paltaKg+'kg plt\xd7'+fmtMoney(j.precioPaltaKg||0)+'/kg');
     if(j.frutC1>0)    det.push(j.frutC1+'cj1\xd7'+fmtMoney(j.precioC1||0));
     if(j.frutC2>0)    det.push(j.frutC2+'cj2\xd7'+fmtMoney(j.precioC2||0));
