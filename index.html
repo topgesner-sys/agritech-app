@@ -6240,6 +6240,9 @@ function renderLiquidaciones(){
     var totalWorker = jornadas.reduce(function(s,j){ return s+(j.pago||0); }, 0);
     var totalHoras  = jornadas.filter(function(j){ return j.horas>0; }).reduce(function(s,j){ return s+(j.horas||0); }, 0);
     var pagado = jornadas.filter(function(j){ return j.pagado; }).length;
+    var adelPend = (db.adelantos||[]).filter(function(a){ return a.workerId===w.id && !a.descontado; });
+    var totalAdel = adelPend.reduce(function(s,a){ return s+(a.monto||0); }, 0);
+    var netoAPagar = Math.max(0, totalWorker - totalAdel);
     var color = wcolor(wi);
     var initials = w.nombre.charAt(0).toUpperCase();
 
@@ -6280,11 +6283,24 @@ function renderLiquidaciones(){
         '<table>'+
           '<thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Sector</th><th>Pago</th><th>Estado</th></tr></thead>'+
           '<tbody>'+jornadasRows+'</tbody>'+
-          '<tfoot><tr style="background:#f0faf4">'+
-            '<td colspan="4" style="padding:10px 12px;font-weight:700;color:var(--green-deep)">TOTAL</td>'+
-            '<td style="padding:10px 12px"><span class="mono" style="font-weight:700;font-size:1.1rem;color:var(--green-deep)">'+fmtMoney(totalWorker)+'</span></td>'+
-            '<td style="padding:10px 12px"><span style="font-size:.78rem;color:var(--text-muted)">'+pagado+'/'+jornadas.length+' pagadas</span></td>'+
-          '</tr></tfoot>'+
+          (totalAdel>0 ?
+            '<tr style="background:#fff8e1"><td colspan="4" style="padding:8px 12px;color:#92400e;font-weight:600">Adelantos pendientes ('+adelPend.length+')</td>'+
+            '<td style="padding:8px 12px"><span class="mono" style="color:#b45309;font-weight:700">- '+fmtMoney(totalAdel)+'</span></td>'+
+            '<td style="padding:8px 12px"><button class="btn btn-sm liq-desc-btn" data-wid="'+w.id+'" style="font-size:.72rem;background:#fef3c7;border:1px solid #fcd34d">Marcar descontados</button></td></tr>'
+          : '')+
+          '<tr style="background:#f0faf4">'+
+            '<td colspan="4" style="padding:8px 12px;font-weight:600;color:#6b7c6e">TOTAL BRUTO</td>'+
+            '<td style="padding:8px 12px"><span class="mono" style="color:#6b7c6e">'+fmtMoney(totalWorker)+'</span></td>'+
+            '<td style="padding:8px 12px"><span style="font-size:.78rem;color:var(--text-muted)">'+pagado+'/'+jornadas.length+' pagadas</span></td>'+
+          '</tr>'+
+          '<tr style="background:#e8f5e9">'+
+            '<td colspan="4" style="padding:12px;font-weight:800;font-size:1rem;color:#1a3325">NETO A PAGAR</td>'+
+            '<td colspan="2" style="padding:12px">'+
+              '<span class="mono" style="font-weight:800;font-size:1.3rem;color:var(--green-deep)">'+fmtMoney(netoAPagar)+'</span>'+
+              (totalAdel>0 ? '<div style="font-size:.72rem;color:#6b7c6e">Bruto '+fmtMoney(totalWorker)+' - Adelantos '+fmtMoney(totalAdel)+'</div>' : '')+
+            '</td>'+
+          '</tr>'+
+          '<tfoot style="display:none"></tfoot>'+
         '</table>'+
       '</div>'+
     '</div>';
@@ -6299,6 +6315,14 @@ function renderLiquidaciones(){
   });
   container.querySelectorAll('.liq-pagado-btn').forEach(function(btn){
     btn.addEventListener('click', function(){ marcarTodosPagados(parseInt(btn.dataset.wid), btn.dataset.d, btn.dataset.h); });
+  });
+  container.querySelectorAll('.liq-desc-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var wdesc = parseInt(btn.dataset.wid);
+      var cnt = 0;
+      (db.adelantos||[]).forEach(function(a){ if(a.workerId===wdesc && !a.descontado){ a.descontado=true; cnt++; } });
+      if(cnt){ save('adelantos'); toast('Adelantos descontados'); renderLiquidaciones(); }
+    });
   });
 }
 
