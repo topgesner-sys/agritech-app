@@ -2697,7 +2697,7 @@ function loadFromCloud(){
             // Firebase is empty but we have local data - push local UP to Firebase
             console.log('Safety: pushing local data to Firebase for', key, localItems.length, 'items');
             syncToCloud(key);
-            return;
+            // fall through to loadedCount++ below
           }
           // Only update if Firebase has MORE or EQUAL items (prevents regression)
           // OR if the data is genuinely different (edits/deletions)
@@ -3142,6 +3142,12 @@ function saveCosecha(){
   const c2=parseFloat(document.getElementById('c-c2').value)||0;
   if(kg===0&&bins===0&&c1===0&&c2===0){ toast('⚠️ Ingresa al menos una cantidad'); return; }
   readImgAsB64('c-foto',foto=>{
+    if(_editId && _editModule==='cosechas'){
+      var idx2=db.cosechas.findIndex(function(x){return x.id===_editId;});
+      if(idx2>=0){ db.cosechas[idx2]=Object.assign(db.cosechas[idx2],{tipo,kg,bins,c1,c2,sector:document.getElementById('c-sector').value||'—',fecha,obs:document.getElementById('c-obs').value}); }
+      _editId=null; _editModule=null; save('cosechas'); closeModal('modal-cosecha');
+      toast('✅ Cosecha actualizada'); renderCosechas(); renderDashboard(); return;
+    }
     db.cosechas.push({id:genId(db.cosechas),tipo,kg,bins,c1,c2,sector:document.getElementById('c-sector').value||'—',fecha,obs:document.getElementById('c-obs').value,foto});
     save('cosechas'); closeModal('modal-cosecha');
     ['c-tipo','c-kg','c-bins','c-bins-kg','c-c1','c-c2','c-caja-kg','c-sector','c-obs'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
@@ -3159,6 +3165,12 @@ function saveInsumo(){
   const cant=parseFloat(document.getElementById('i-cant').value);
   const fecha=document.getElementById('i-fecha').value;
   if(!nom||!tipo||!cant||!fecha){ toast('⚠️ Completa los campos requeridos'); return; }
+  if(_editId && _editModule==='insumos'){
+    var idx2=db.insumos.findIndex(function(x){return x.id===_editId;});
+    if(idx2>=0) db.insumos[idx2]=Object.assign(db.insumos[idx2],{nombre:nom,tipo,cantidad:cant,unidad:document.getElementById('i-unidad').value,fecha,costo:parseFloat(document.getElementById('i-costo').value)||0,obs:document.getElementById('i-obs').value});
+    _editId=null; _editModule=null; save('insumos'); closeModal('modal-insumo');
+    toast('✅ Insumo actualizado'); renderInsumos(); return;
+  }
   db.insumos.push({id:genId(db.insumos),nombre:nom,tipo:getCatValue('i-tipo','i-tipo-otro'),cantidad:cant,unidad:document.getElementById('i-unidad').value,fecha,costo:parseFloat(document.getElementById('i-costo').value)||0,obs:document.getElementById('i-obs').value});
   save('insumos'); closeModal('modal-insumo');
   ['i-nom','i-tipo','i-cant','i-fecha','i-costo','i-obs'].forEach(i=>document.getElementById(i).value='');
@@ -3170,6 +3182,12 @@ function saveInventario(){
   const nom=document.getElementById('inv-nom').value;
   const cant=parseFloat(document.getElementById('inv-cant').value);
   if(!nom||isNaN(cant)){ toast('⚠️ Nombre y cantidad requeridos'); return; }
+  if(_editId && _editModule==='inventario'){
+    var idx2=db.inventario.findIndex(function(x){return x.id===_editId;});
+    if(idx2>=0) db.inventario[idx2]=Object.assign(db.inventario[idx2],{nombre:nom,cat:document.getElementById('inv-cat').value,cantidad:cant,minimo:parseFloat(document.getElementById('inv-min').value)||0,unidad:document.getElementById('inv-unidad').value,proveedor:document.getElementById('inv-prov').value||'—',fecha:document.getElementById('inv-fecha').value||today()});
+    _editId=null; _editModule=null; save('inventario'); closeModal('modal-inventario');
+    toast('✅ Inventario actualizado'); renderInventario(); return;
+  }
   db.inventario.push({id:genId(db.inventario),nombre:nom,cat:getCatValue('inv-cat','inv-cat-otro'),cantidad:cant,minimo:parseFloat(document.getElementById('inv-min').value)||0,unidad:document.getElementById('inv-unidad').value,proveedor:document.getElementById('inv-prov').value||'—',fecha:document.getElementById('inv-fecha').value||today()});
   save('inventario'); closeModal('modal-inventario');
   ['inv-nom','inv-cant','inv-min','inv-prov','inv-fecha'].forEach(i=>document.getElementById(i).value='');
@@ -3382,6 +3400,12 @@ function saveCosto(){
   const monto=parseFloat(document.getElementById('ct-monto').value);
   const fecha=document.getElementById('ct-fecha').value;
   if(!desc||!monto||!fecha){ toast('⚠️ Completa los campos requeridos'); return; }
+  if(_editId && _editModule==='costos'){
+    var idx2=db.costos.findIndex(function(x){return x.id===_editId;});
+    if(idx2>=0) db.costos[idx2]=Object.assign(db.costos[idx2],{desc,cat:document.getElementById('ct-cat').value,monto,fecha,obs:document.getElementById('ct-obs').value});
+    _editId=null; _editModule=null; save('costos'); closeModal('modal-costo');
+    toast('✅ Gasto actualizado'); renderCostos(); renderDashboard(); return;
+  }
   db.costos.push({id:genId(db.costos),desc,cat:getCatValue('ct-cat','ct-cat-otro'),monto,fecha,obs:document.getElementById('ct-obs').value});
   save('costos'); closeModal('modal-costo');
   ['ct-desc','ct-monto','ct-fecha','ct-obs'].forEach(i=>document.getElementById(i).value='');
@@ -3392,6 +3416,12 @@ function saveCosto(){
 function saveClima(){
   const fecha=document.getElementById('cl-fecha').value;
   if(!fecha){ toast('⚠️ Fecha requerida'); return; }
+  if(_editId && _editModule==='clima'){
+    var idx2=db.clima.findIndex(function(x){return x.id===_editId;});
+    if(idx2>=0) db.clima[idx2]=Object.assign(db.clima[idx2],{fecha:document.getElementById('cl-fecha').value,cond:document.getElementById('cl-cond').value,tmin:parseFloat(document.getElementById('cl-tmin').value)||0,tmax:parseFloat(document.getElementById('cl-tmax').value)||0,lluvia:parseFloat(document.getElementById('cl-lluvia').value)||0,viento:parseFloat(document.getElementById('cl-viento').value)||0,obs:document.getElementById('cl-obs').value});
+    _editId=null; _editModule=null; save('clima'); closeModal('modal-clima');
+    toast('✅ Clima actualizado'); renderClima(); return;
+  }
   db.clima.push({id:genId(db.clima),fecha,cond:document.getElementById('cl-cond').value,tmin:parseFloat(document.getElementById('cl-tmin').value)||0,tmax:parseFloat(document.getElementById('cl-tmax').value)||0,lluvia:parseFloat(document.getElementById('cl-lluvia').value)||0,viento:parseFloat(document.getElementById('cl-viento').value)||0,obs:document.getElementById('cl-obs').value});
   save('clima'); closeModal('modal-clima');
   ['cl-fecha','cl-tmin','cl-tmax','cl-lluvia','cl-viento','cl-obs'].forEach(i=>document.getElementById(i).value='');
@@ -4304,6 +4334,12 @@ function saveCuota(){
   db.cuotas.push({id:genId(db.cuotas),creditoId,num:parseInt(document.getElementById('cuota-num').value)||1,fecha,capital,interes,seguro,comision,total,obs:document.getElementById('cuota-obs').value});
   save('cuotas');
   const cred=db.creditos.find(x=>x.id===creditoId);
+  if(_editId && _editModule==='costos'){
+    var idx2=db.costos.findIndex(function(x){return x.id===_editId;});
+    if(idx2>=0) db.costos[idx2]=Object.assign(db.costos[idx2],{desc,cat:document.getElementById('ct-cat').value,monto,fecha,obs:document.getElementById('ct-obs').value});
+    _editId=null; _editModule=null; save('costos'); closeModal('modal-costo');
+    toast('✅ Gasto actualizado'); renderCostos(); renderDashboard(); return;
+  }
   db.costos.push({id:genId(db.costos),desc:`Cuota: ${cred?cred.nombre:'crédito'} (N°${document.getElementById('cuota-num').value})`,cat:'Otros',monto:total,fecha,obs:'Auto-registrado desde créditos'});
   save('costos');
   closeModal('modal-cuota');
@@ -6030,6 +6066,12 @@ function saveEnvase(){
   }
   if(!compId || !cant || !fecha){ toast('⚠️ Completa comprador, cantidad y fecha'); return; }
   
+  if(_editId && _editModule==='envases'){
+    var idx2=db.envases.findIndex(function(x){return x.id===_editId;});
+    if(idx2>=0) db.envases[idx2]=Object.assign(db.envases[idx2],{tipo:document.getElementById('env-tipo').value,movimiento:document.getElementById('env-mov').value,cantidad:parseFloat(document.getElementById('env-cant').value)||0,fecha:document.getElementById('env-fecha').value,notas:document.getElementById('env-notas')?document.getElementById('env-notas').value:'',compradorId:parseInt(document.getElementById('env-comprador').value)||0});
+    _editId=null; _editModule=null; save('envases'); closeModal('modal-envase');
+    toast('✅ Envase actualizado'); renderEnvases(); return;
+  }
   db.envases.push({
     id: genId(db.envases),
     compradorId: compId,
@@ -7106,6 +7148,57 @@ function openEdit(module, id){
     // original openEdit from edit module
     var item = db[module] ? db[module].find(function(x){return x.id===id;}) : null;
     if(item){ _editId=id; _editModule=module; }
+  }
+
+  if(module==='cosechas'){
+    var item=(db.cosechas||[]).find(function(x){return x.id===id;});
+    if(!item) return; _editId=id; _editModule='cosechas';
+    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
+    s('c-tipo',item.tipo); s('c-fecha',item.fecha); s('c-kg',item.kg||0);
+    s('c-sector',item.sector); s('c-bins',item.bins||0); s('c-c1',item.c1||0);
+    s('c-c2',item.c2||0); s('c-obs',item.obs);
+    if(document.getElementById('c-tipo')) document.getElementById('c-tipo').dispatchEvent(new Event('change'));
+    openModal('modal-cosecha'); return;
+  }
+  if(module==='insumos'){
+    var item=(db.insumos||[]).find(function(x){return x.id===id;});
+    if(!item) return; _editId=id; _editModule='insumos';
+    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
+    s('i-nom',item.nombre); s('i-tipo',item.tipo); s('i-cant',item.cantidad);
+    s('i-unidad',item.unidad); s('i-fecha',item.fecha); s('i-costo',item.costo||0); s('i-obs',item.obs);
+    openModal('modal-insumo'); return;
+  }
+  if(module==='inventario'){
+    var item=(db.inventario||[]).find(function(x){return x.id===id;});
+    if(!item) return; _editId=id; _editModule='inventario';
+    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
+    s('inv-nom',item.nombre); s('inv-cat',item.cat); s('inv-cant',item.cantidad);
+    s('inv-min',item.minimo||0); s('inv-unidad',item.unidad); s('inv-fecha',item.fecha); s('inv-prov',item.proveedor);
+    openModal('modal-inventario'); return;
+  }
+  if(module==='costos'){
+    var item=(db.costos||[]).find(function(x){return x.id===id;});
+    if(!item) return; _editId=id; _editModule='costos';
+    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
+    s('ct-desc',item.desc); s('ct-cat',item.cat); s('ct-monto',item.monto); s('ct-fecha',item.fecha); s('ct-obs',item.obs);
+    openModal('modal-costo'); return;
+  }
+  if(module==='clima'){
+    var item=(db.clima||[]).find(function(x){return x.id===id;});
+    if(!item) return; _editId=id; _editModule='clima';
+    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
+    s('cl-fecha',item.fecha); s('cl-cond',item.cond); s('cl-tmin',item.tmin); s('cl-tmax',item.tmax);
+    s('cl-lluvia',item.lluvia||0); s('cl-viento',item.viento||0); s('cl-obs',item.obs);
+    openModal('modal-clima'); return;
+  }
+  if(module==='envases'){
+    var item=(db.envases||[]).find(function(x){return x.id===id;});
+    if(!item) return; _editId=id; _editModule='envases';
+    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
+    s('env-tipo',item.tipo); s('env-mov',item.movimiento); s('env-cant',item.cantidad);
+    s('env-fecha',item.fecha); s('env-notas',item.notas);
+    if(document.getElementById('env-comprador')) document.getElementById('env-comprador').value=item.compradorId||'';
+    openModal('modal-envase'); return;
   }
 }
 
