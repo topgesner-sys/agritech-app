@@ -424,6 +424,7 @@ textarea{resize:vertical;min-height:72px}
     <button class="nav-btn" onclick="showView('insumos')"><span class="icon">🧪</span> Insumos</button>
     <button class="nav-btn" onclick="showView('inventario')"><span class="icon">📦</span> Inventario</button>
     <button class="nav-btn" onclick="showView('envases')"><span class="icon">🧺</span> Envases</button>
+    <button class="nav-btn" onclick="showView('compradores')"><span class="icon">🤝</span> Compradores</button>
 
     <span class="nav-label">Recursos</span>
     <button class="nav-btn" onclick="showView('trabajadores')"><span class="icon">👷</span> Trabajadores</button>
@@ -1200,7 +1201,46 @@ textarea{resize:vertical;min-height:72px}
   </div>
 
 
-  <!-- ======== ENVASES ======== -->
+  <!-- ======== COMPRADORES ======== -->
+  <div class="view" id="view-compradores">
+    <div class="section-header">
+      <div>
+        <div class="section-title">🤝 Compradores</div>
+        <div class="section-sub">Historial de envases por comprador y fecha</div>
+      </div>
+      <button class="btn btn-primary" onclick="openModal('modal-comprador')">＋ Nuevo Comprador</button>
+    </div>
+    <!-- Filter bar -->
+    <div class="filter-bar" style="margin-bottom:16px">
+      <select id="f-comp-id" onchange="renderCompradoresView()" style="padding:8px 11px;font-size:.81rem;border:1.5px solid var(--border);border-radius:7px">
+        <option value="">Todos los compradores</option>
+      </select>
+      <input type="date" id="f-comp-d" onchange="renderCompradoresView()" style="padding:8px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:.81rem">
+      <input type="date" id="f-comp-h" onchange="renderCompradoresView()" style="padding:8px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:.81rem">
+      <button class="btn btn-secondary btn-sm" onclick="clearFComp()">✕ Limpiar</button>
+    </div>
+    <!-- Stats per comprador -->
+    <div id="comp-stats-grid" style="margin-bottom:18px"></div>
+    <!-- Envases history table -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📋 Historial de Envases por Comprador</div>
+      </div>
+      <div class="card-body" style="padding:0"><div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Fecha</th><th>Comprador</th><th>Tipo Envase</th><th>Movimiento</th>
+            <th>Cantidad</th><th>Balance</th><th>Notas</th>
+          </tr></thead>
+          <tbody id="tabla-compradores-hist"></tbody>
+        </table>
+      </div></div>
+    </div>
+    <!-- Per comprador summary cards -->
+    <div id="comp-cards"></div>
+  </div>
+
+<!-- ======== ENVASES ======== -->
   <div class="view" id="view-envases">
     <div class="section-header">
       <div>
@@ -2687,7 +2727,7 @@ function loadFromCloud(){
               trabajadores:renderTrabajadores, cosechas:renderCosechas,
               liquidaciones:renderLiquidaciones, costos:renderCostos,
               inventario:renderInventario, insumos:renderInsumos,
-              envases:renderEnvases, asistencia:function(){ 
+              envases:renderEnvases,compradores:renderCompradoresView, asistencia:function(){ 
                 var el=document.getElementById('asist-fecha'); 
                 if(el&&!el.value) el.value=today(); 
                 renderAsistencia(); renderHistorialAsistencia(); 
@@ -2976,7 +3016,7 @@ function seed(){
 }
 
 // ========== NAV ==========
-const VIEW_TITLES={dashboard:'Dashboard',facturas:'Facturas',ventas:'Ventas e Ingresos',adelantos:'Adelantos y Descuentos',cosechas:'Cosechas',insumos:'Insumos Líquidos',inventario:'Inventario',trabajadores:'Trabajadores',liquidaciones:'Liquidaciones de Pago',costos:'Costos y Gastos',clima:'Condiciones Climáticas',calendario:'Calendario Agrícola',alertas:'Centro de Alertas',reportes:'Análisis Avanzado',exportar:'Exportar / PDF',envases:'Control de Envases',asistencia:'Asistencia Diaria',ganado:'Gestión de Animales',sanidad:'Sanidad Animal',reproduccion:'Reproducción y Partos',creditos:'Créditos vs Producción',presupuesto:'Presupuesto Productivo'};
+const VIEW_TITLES={dashboard:'Dashboard',compradores:'Compradores',facturas:'Facturas',ventas:'Ventas e Ingresos',adelantos:'Adelantos y Descuentos',cosechas:'Cosechas',insumos:'Insumos Líquidos',inventario:'Inventario',trabajadores:'Trabajadores',liquidaciones:'Liquidaciones de Pago',costos:'Costos y Gastos',clima:'Condiciones Climáticas',calendario:'Calendario Agrícola',alertas:'Centro de Alertas',reportes:'Análisis Avanzado',exportar:'Exportar / PDF',compradores:'Compradores',compradores:'Compradores',envases:'Control de Envases',asistencia:'Asistencia Diaria',ganado:'Gestión de Animales',sanidad:'Sanidad Animal',reproduccion:'Reproducción y Partos',creditos:'Créditos vs Producción',presupuesto:'Presupuesto Productivo'};
 
 function showView(id){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -2984,7 +3024,7 @@ function showView(id){
   document.getElementById('view-'+id).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b=>{ if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+id+"'")) b.classList.add('active'); });
   document.getElementById('pageTitle').textContent = VIEW_TITLES[id]||id;
-  const renders={dashboard:renderDashboard,facturas:renderFacturas,ventas:renderVentas,adelantos:renderAdelantos,asistencia:function(){ var el=document.getElementById("asist-fecha"); if(el&&!el.value) el.value=today(); renderAsistencia(); renderHistorialAsistencia(); },envases:renderEnvases,cosechas:renderCosechas,insumos:renderInsumos,inventario:renderInventario,trabajadores:renderTrabajadores,liquidaciones:renderLiquidaciones,costos:renderCostos,clima:renderClima,calendario:renderCalendario,alertas:renderAlertas,reportes:renderReportes,exportar:renderExport,ganado:renderGanado,sanidad:renderSanidad,reproduccion:renderReproduccion,creditos:renderCreditos,presupuesto:renderPresupuesto};
+  const renders={dashboard:renderDashboard,facturas:renderFacturas,ventas:renderVentas,adelantos:renderAdelantos,asistencia:function(){ var el=document.getElementById("asist-fecha"); if(el&&!el.value) el.value=today(); renderAsistencia(); renderHistorialAsistencia(); },envases:renderEnvases,compradores:renderCompradoresView,cosechas:renderCosechas,insumos:renderInsumos,inventario:renderInventario,trabajadores:renderTrabajadores,liquidaciones:renderLiquidaciones,costos:renderCostos,clima:renderClima,calendario:renderCalendario,alertas:renderAlertas,reportes:renderReportes,exportar:renderExport,ganado:renderGanado,sanidad:renderSanidad,reproduccion:renderReproduccion,creditos:renderCreditos,presupuesto:renderPresupuesto};
   if(renders[id]) renders[id]();
   // Re-render after 1.5s to catch Firebase data if it arrives late
   // EXCEPTION: liquidaciones - delayed render resets worker selection
@@ -5415,23 +5455,24 @@ function renderHistorialAsistencia(){
   var h = document.getElementById('asist-hist-h') ? document.getElementById('asist-hist-h').value : '';
   var filt = (db.asistencia||[]).filter(function(a){ return inRange(a.fecha, d, h); })
     .sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
-  
   var tbody = document.getElementById('asist-hist-tabla');
+  if(!tbody) return;
   tbody.innerHTML = filt.length ? filt.map(function(a){
-    var w = db.trabajadores.find(function(x){ return x.id === a.workerId; });
-    var estadoBadge = a.estado === 'presente' ? '<span class="badge badge-green">✅ Presente</span>' :
-                      a.estado === 'ausente'  ? '<span class="badge badge-red">❌ Ausente</span>' :
-                                                '<span class="badge badge-gray">⏳ Pendiente</span>';
+    var presentes = a.presentes !== undefined ? a.presentes :
+                    (a.workers ? a.workers.filter(function(w){return w.presente;}).length : 0);
+    var ausentes  = a.ausentes  !== undefined ? a.ausentes  :
+                    (a.workers ? a.workers.filter(function(w){return !w.presente;}).length : 0);
     return '<tr>' +
-      '<td>' + fmtDate(a.fecha) + '</td>' +
-      '<td><strong>' + (w ? w.nombre : '—') + '</strong></td>' +
-      '<td>' + estadoBadge + '</td>' +
-      '<td>' + (a.entrada || '—') + '</td>' +
-      '<td>' + (a.salida || '—') + '</td>' +
-      '<td style="font-size:.78rem;color:var(--text-muted)">' + (a.notas || '—') + '</td>' +
-      '<td><button class="btn btn-danger btn-sm asist-del-btn" data-id="' + a.id + '">🗑</button></td>' +
+      '<td><strong>' + fmtDate(a.fecha) + '</strong></td>' +
+      '<td><span class="badge badge-green">' + presentes + ' presentes</span></td>' +
+      '<td><span class="badge badge-red">' + ausentes + ' ausentes</span></td>' +
+      '<td style="font-size:.82rem">' + (a.tareaGeneral || '—') + '</td>' +
+      '<td>' +
+        '<button class="btn btn-secondary btn-sm" onclick="editarAsistencia(' + a.id + ')" style="margin-right:4px">✏️</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="delAsistenciaReg(' + a.id + ')">🗑</button>' +
+      '</td>' +
     '</tr>';
-  }).join('') : '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Sin registros en ese período</td></tr>';
+  }).join('') : '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Sin asistencias registradas. Usa + Nueva Asistencia para registrar.</td></tr>';
 }
 
 // ========== AUTH & MULTI-USER SYSTEM ==========
@@ -6798,8 +6839,7 @@ function saveAdelanto(){
   save('adelantos');
   // Auto-register as company expense
   var w = db.trabajadores.find(function(x){ return x.id===wid; });
-  db.costos.push({ id:genId(db.costos), desc:'Adelanto — '+(w?w.nombre:'Trabajador'), cat:'Mano de obra', monto:monto, fecha:fecha, obs:'Adelanto de sueldo' });
-  save('costos');
+  // Adelantos NO se suman a gastos - se descuentan del pago
   closeModal('modal-adelanto');
   ['adel-monto','adel-periodo','adel-desc'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   toast('✅ Adelanto registrado'); renderAdelantos(); renderDashboard();
@@ -7179,6 +7219,99 @@ function checkAndRecoverData(){
   return recovered;
 }
 
+
+// ========== COMPRADORES VIEW ==========
+function renderCompradoresView(){
+  // Populate filter select
+  var sel = document.getElementById('f-comp-id');
+  if(sel){
+    var curVal = sel.value;
+    sel.innerHTML = '<option value="">Todos los compradores</option>' +
+      (db.compradores||[]).map(function(c){
+        return '<option value="'+c.id+'">'+c.nombre+'</option>';
+      }).join('');
+    if(curVal) sel.value = curVal;
+  }
+
+  var fComp = sel ? parseInt(sel.value)||0 : 0;
+  var fD = document.getElementById('f-comp-d') ? document.getElementById('f-comp-d').value : '';
+  var fH = document.getElementById('f-comp-h') ? document.getElementById('f-comp-h').value : '';
+
+  // Filter envases
+  var envFilt = (db.envases||[]).filter(function(e){
+    if(fComp && e.compradorId !== fComp) return false;
+    if(!inRange(e.fecha, fD, fH)) return false;
+    return true;
+  }).sort(function(a,b){ return b.fecha.localeCompare(a.fecha); });
+
+  // Historial table
+  var tbody = document.getElementById('tabla-compradores-hist');
+  if(tbody){
+    tbody.innerHTML = envFilt.length ? envFilt.map(function(e){
+      var comp = (db.compradores||[]).find(function(c){ return c.id===e.compradorId; });
+      var movBadge = e.movimiento==='entrega' ? '<span class="badge badge-green">📤 Entrega</span>' :
+                     e.movimiento==='recepcion' ? '<span class="badge badge-blue">📥 Recepción</span>' :
+                     '<span class="badge badge-gray">'+e.movimiento+'</span>';
+      // Calculate running balance for this comprador
+      var compEnvases = (db.envases||[]).filter(function(x){ return x.compradorId===e.compradorId; });
+      var balance = compEnvases.reduce(function(s,x){
+        return s + (x.movimiento==='entrega'?-x.cantidad:(x.movimiento==='recepcion'?x.cantidad:0));
+      },0);
+      return '<tr>'+
+        '<td><span class="mono">'+fmtDate(e.fecha)+'</span></td>'+
+        '<td><strong>'+(comp?comp.nombre:'—')+'</strong></td>'+
+        '<td>'+(e.tipo||'—')+'</td>'+
+        '<td>'+movBadge+'</td>'+
+        '<td><span class="mono">'+e.cantidad+'</span></td>'+
+        '<td><span class="mono" style="color:'+(balance>=0?'var(--green-mid)':'var(--red-soft)')+'">'+balance+'</span></td>'+
+        '<td style="font-size:.78rem;color:var(--text-muted)">'+(e.notas||'—')+'</td>'+
+      '</tr>';
+    }).join('') :
+    '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">Sin movimientos de envases registrados</td></tr>';
+  }
+
+  // Per comprador summary cards
+  var cardsEl = document.getElementById('comp-cards');
+  if(cardsEl){
+    var comps = fComp ? (db.compradores||[]).filter(function(c){ return c.id===fComp; }) : (db.compradores||[]);
+    if(!comps.length){
+      cardsEl.innerHTML = '<div class="alert alert-info">ℹ️ No hay compradores registrados. Usa el módulo <strong>Envases</strong> para registrar compradores.</div>';
+      return;
+    }
+    cardsEl.innerHTML = comps.map(function(c){
+      var cEnvases = (db.envases||[]).filter(function(e){
+        if(e.compradorId !== c.id) return false;
+        if(!inRange(e.fecha, fD, fH)) return false;
+        return true;
+      });
+      var entregados = cEnvases.filter(function(e){ return e.movimiento==='entrega'; }).reduce(function(s,e){ return s+e.cantidad; },0);
+      var recibidos  = cEnvases.filter(function(e){ return e.movimiento==='recepcion'; }).reduce(function(s,e){ return s+e.cantidad; },0);
+      var balance = recibidos - entregados;
+      return '<div class="card" style="margin-bottom:14px">'+
+        '<div class="card-header">'+
+          '<div class="card-title">🤝 '+c.nombre+'</div>'+
+          '<span class="badge '+(balance>=0?'badge-green':'badge-red')+'">Balance: '+balance+' envases</span>'+
+        '</div>'+
+        '<div class="card-body">'+
+          '<div class="cost-strip">'+
+            '<div class="cost-box"><div class="cost-box-val">'+entregados+'</div><div class="cost-box-lbl">Entregados</div></div>'+
+            '<div class="cost-box"><div class="cost-box-val">'+recibidos+'</div><div class="cost-box-lbl">Recibidos vacíos</div></div>'+
+            '<div class="cost-box"><div class="cost-box-val" style="color:'+(balance>=0?'var(--green-mid)':'var(--red-soft)')+'">'+balance+'</div><div class="cost-box-lbl">Balance</div></div>'+
+            '<div class="cost-box"><div class="cost-box-val">'+cEnvases.length+'</div><div class="cost-box-lbl">Movimientos</div></div>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
+}
+
+function clearFComp(){
+  var d = document.getElementById('f-comp-d'); if(d) d.value='';
+  var h = document.getElementById('f-comp-h'); if(h) h.value='';
+  var s = document.getElementById('f-comp-id'); if(s) s.value='';
+  renderCompradoresView();
+}
+
 // ========== INIT ==========
 function checkVersion(){
   var ver = document.querySelector('.logo-ver');
@@ -7257,6 +7390,22 @@ function startApp(){
 }
 
 
+
+function delAsistenciaReg(id){
+  if(!confirm('Eliminar registro de asistencia?')) return;
+  db.asistencia = (db.asistencia||[]).filter(function(a){ return a.id !== id; });
+  save('asistencia');
+  renderHistorialAsistencia();
+  toast('Eliminado');
+}
+
+function editarAsistencia(id){
+  var a=(db.asistencia||[]).find(function(x){return x.id===id;});
+  if(!a){toast("Registro no encontrado");return;}
+  var el=document.getElementById("asist-fecha");
+  if(el) el.value=a.fecha;
+  setTimeout(abrirNuevaAsistencia, 50);
+}
 </script>
 </body>
 </html>
