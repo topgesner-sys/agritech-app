@@ -1151,55 +1151,47 @@ textarea{resize:vertical;min-height:72px}
     <div class="section-header">
       <div>
         <div class="section-title">📋 Asistencia Diaria</div>
-        <div class="section-sub">Control de presencia de trabajadores por día</div>
+        <div class="section-sub">Control de presencia de todos los trabajadores activos</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input type="date" id="asist-fecha" onchange="renderAsistencia()" style="padding:8px 12px;font-size:.85rem">
+        <input type="date" id="asist-fecha" onchange="renderAsistencia()" style="padding:9px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem">
         <button class="btn btn-secondary btn-sm" onclick="setAsistFechaHoy()">📅 Hoy</button>
-        <button class="btn btn-primary" onclick="guardarAsistencia()">💾 Guardar</button>
+        <button class="btn btn-primary" onclick="abrirNuevaAsistencia()">＋ Nueva Asistencia</button>
       </div>
     </div>
     <div id="asist-resumen" style="margin-bottom:16px"></div>
-    <div class="grid-2" style="margin-bottom:18px">
-      <div class="card">
-        <div class="card-header"><div class="card-title">✅ Presentes</div><div id="asist-count-p" class="badge badge-green">0</div></div>
-        <div class="card-body" style="padding:0"><div id="asist-lista-presentes"></div></div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title" id="asist-reporte-titulo">📋 Selecciona una fecha para ver el reporte</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="printAsistencia()">🖨️ Imprimir</button>
+          <button class="btn btn-secondary btn-sm" onclick="editAsistencia()">✏️ Editar</button>
+        </div>
       </div>
-      <div class="card">
-        <div class="card-header"><div class="card-title">❌ Ausentes</div><div id="asist-count-a" class="badge badge-red">0</div></div>
-        <div class="card-body" style="padding:0"><div id="asist-lista-ausentes"></div></div>
-      </div>
+      <div class="card-body" style="padding:0"><div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Trabajador</th><th>Cargo</th><th>Asistencia</th><th>Tarea del dia</th><th>Observaciones</th></tr></thead>
+          <tbody id="asist-tabla"></tbody>
+        </table>
+      </div></div>
     </div>
     <div class="card">
-      <div class="card-header"><div class="card-title">👷 Registro del Día</div></div>
-      <div class="card-body" style="padding:0">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Trabajador</th><th>Rol</th><th>Estado</th><th>Hora entrada</th><th>Hora salida</th><th>Notas</th></tr></thead>
-            <tbody id="asist-tabla"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    <div class="card" style="margin-top:4px">
       <div class="card-header">
-        <div class="card-title">📊 Historial de Asistencia</div>
+        <div class="card-title">📅 Historial de Asistencias</div>
         <div style="display:flex;gap:8px">
-          <input type="date" id="asist-hist-d" style="padding:6px 10px;font-size:.78rem">
-          <input type="date" id="asist-hist-h" style="padding:6px 10px;font-size:.78rem">
-          <button class="btn btn-secondary btn-sm" onclick="renderHistorialAsistencia()">Ver</button>
+          <input type="date" id="asist-hist-d" onchange="renderHistorialAsistencia()" style="padding:6px 10px;font-size:.8rem;border:1.5px solid var(--border);border-radius:6px">
+          <input type="date" id="asist-hist-h" onchange="renderHistorialAsistencia()" style="padding:6px 10px;font-size:.8rem;border:1.5px solid var(--border);border-radius:6px">
         </div>
       </div>
-      <div class="card-body" style="padding:0">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Fecha</th><th>Trabajador</th><th>Estado</th><th>Entrada</th><th>Salida</th><th>Notas</th><th></th></tr></thead>
-            <tbody id="asist-hist-tabla"></tbody>
-          </table>
-        </div>
-      </div>
+      <div class="card-body" style="padding:0"><div class="table-wrap">
+        <table>
+          <thead><tr><th>Fecha</th><th>Presentes</th><th>Ausentes</th><th>Tarea general</th><th></th></tr></thead>
+          <tbody id="asist-hist-tabla"></tbody>
+        </table>
+      </div></div>
     </div>
   </div>
+
 
   <!-- ======== ENVASES ======== -->
   <div class="view" id="view-envases">
@@ -2444,6 +2436,53 @@ textarea{resize:vertical;min-height:72px}
   <div class="form-actions">
     <button class="btn btn-secondary" onclick="closeModal('modal-empresa')">Cancelar</button>
     <button class="btn btn-primary" onclick="saveEmpresa()">💾 Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL: ASISTENCIA NUEVA -->
+<div class="modal-backdrop" id="modal-asistencia">
+<div class="modal" style="max-width:680px">
+  <div class="modal-title" id="modal-asist-titulo">📋 Nueva Asistencia</div>
+  <div class="form-grid" style="margin-bottom:14px">
+    <div class="form-group">
+      <label>Fecha *</label>
+      <input type="date" id="asist-modal-fecha">
+    </div>
+    <div class="form-group">
+      <label>Tarea general del dia</label>
+      <input type="text" id="asist-tarea-general" placeholder="Ej: Cosecha sector A, Poda, Riego...">
+    </div>
+    <div class="form-group full">
+      <label>Observaciones generales</label>
+      <input type="text" id="asist-obs-general" placeholder="Observaciones del dia...">
+    </div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div style="font-weight:700;font-size:.9rem;color:var(--green-deep)">
+      Trabajadores — <span id="asist-contador" style="color:var(--green-mid)">0 presentes</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary btn-sm" onclick="marcarTodosPresentes()">Todos presentes</button>
+      <button class="btn btn-secondary btn-sm" onclick="marcarTodosAusentes()">Todos ausentes</button>
+    </div>
+  </div>
+  <div style="max-height:360px;overflow-y:auto;border:1.5px solid var(--border);border-radius:8px">
+    <table style="margin:0">
+      <thead>
+        <tr style="background:#1a3325;color:#b7e4c7">
+          <th style="padding:10px 12px;width:50px">P/A</th>
+          <th style="padding:10px 12px">Trabajador</th>
+          <th style="padding:10px 12px">Cargo</th>
+          <th style="padding:10px 12px">Nota individual (opcional)</th>
+        </tr>
+      </thead>
+      <tbody id="asist-modal-lista"></tbody>
+    </table>
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-secondary" onclick="closeModal('modal-asistencia')">Cancelar</button>
+    <button class="btn btn-primary" onclick="guardarAsistenciaNueva()">💾 Guardar Asistencia</button>
   </div>
 </div>
 </div>
@@ -5110,80 +5149,137 @@ function getAsistenciaDelDia(fecha){
   return db.asistencia.filter(function(a){ return a.fecha === fecha; });
 }
 
-function renderAsistencia(){
-  var fecha = document.getElementById('asist-fecha').value;
-  if(!fecha){
-    document.getElementById('asist-tabla').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">Selecciona una fecha</td></tr>';
-    return;
-  }
-  var trabajadores = db.trabajadores.filter(function(w){ return w.estado === 'Activo'; });
-  var registros = getAsistenciaDelDia(fecha);
-  var presentes = 0, ausentes = 0;
-  var listaP = [], listaA = [];
+function setAsistFechaHoy(){
+  var el=document.getElementById('asist-fecha');
+  if(el){el.value=today();renderAsistencia();}
+}
 
-  var rows = trabajadores.map(function(w){
-    var reg = registros.find(function(r){ return r.workerId === w.id; });
-    var estado = reg ? reg.estado : 'pendiente';
-    var entrada = reg ? (reg.entrada || '') : '';
-    var salida = reg ? (reg.salida || '') : '';
-    var notas = reg ? (reg.notas || '') : '';
-    if(estado === 'presente'){ presentes++; listaP.push(w.nombre); }
-    else if(estado === 'ausente'){ ausentes++; listaA.push(w.nombre); }
-    return '<tr>' +
-      '<td><strong>' + w.nombre + '</strong></td>' +
-      '<td>' + w.rol + '</td>' +
-      '<td><select class="asist-select" data-fecha="' + fecha + '" data-worker="' + w.id + '" data-campo="estado" style="padding:5px 8px;border-radius:6px;font-size:.82rem;border:1.5px solid var(--border)">' +
-        '<option value="pendiente"' + (estado==='pendiente'?' selected':'') + '>⏳ Pendiente</option>' +
-        '<option value="presente"' + (estado==='presente'?' selected':'') + '>✅ Presente</option>' +
-        '<option value="ausente"'  + (estado==='ausente' ?' selected':'') + '>❌ Ausente</option>' +
-      '</select></td>' +
-      '<td><input type="time" class="asist-input" data-fecha="' + fecha + '" data-worker="' + w.id + '" data-campo="entrada" value="' + entrada + '" style="padding:5px;border-radius:6px;font-size:.82rem;border:1.5px solid var(--border)"></td>' +
-      '<td><input type="time" class="asist-input" data-fecha="' + fecha + '" data-worker="' + w.id + '" data-campo="salida" value="' + salida + '" style="padding:5px;border-radius:6px;font-size:.82rem;border:1.5px solid var(--border)"></td>' +
-      '<td><input type="text" class="asist-input" data-fecha="' + fecha + '" data-worker="' + w.id + '" data-campo="notas" value="' + notas + '" placeholder="Observación..." style="padding:5px 8px;border-radius:6px;font-size:.82rem;border:1.5px solid var(--border);width:140px"></td>' +
+function abrirNuevaAsistencia(){
+  var fechaEl=document.getElementById('asist-fecha');
+  var fecha=(fechaEl&&fechaEl.value)?fechaEl.value:today();
+  var mf=document.getElementById('asist-modal-fecha'); if(mf) mf.value=fecha;
+  var reg=(db.asistencia||[]).find(function(a){return a.fecha===fecha;});
+  var tg=document.getElementById('asist-tarea-general'); if(tg) tg.value=reg?(reg.tareaGeneral||''):'';
+  var og=document.getElementById('asist-obs-general'); if(og) og.value=reg?(reg.obsGeneral||''):'';
+  var ti=document.getElementById('modal-asist-titulo');
+  if(ti) ti.textContent=(reg?'Editar':'Nueva')+' Asistencia — '+fmtDate(fecha);
+  var tbody=document.getElementById('asist-modal-lista');
+  if(!tbody) return;
+  var lista=db.trabajadores.filter(function(w){return w.estado==='Activo';});
+  if(!lista.length){
+    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted)">Sin trabajadores activos</td></tr>';
+    openModal('modal-asistencia'); return;
+  }
+  var exMap={};
+  if(reg&&reg.workers) reg.workers.forEach(function(r){exMap[r.id]=r;});
+  tbody.innerHTML=lista.map(function(w,i){
+    var ex=exMap[w.id];
+    var pres=ex?ex.presente:true;
+    var nota=ex?(ex.nota||''):'';
+    var bg=i%2===0?'#fff':'#f9fafb';
+    return '<tr style="background:'+bg+'">'+
+      '<td style="padding:8px 12px;text-align:center">'+
+        '<input type="checkbox" id="asist-check-'+w.id+'" '+(pres?'checked':'')+        ' onchange="actualizarContadorAsist()" style="width:18px;height:18px;accent-color:var(--green-mid);cursor:pointer">'+
+      '</td>'+
+      '<td style="padding:8px 12px;font-weight:600">'+w.nombre+'</td>'+
+      '<td style="padding:8px 12px;color:var(--text-muted)">'+( w.rol||'—')+'</td>'+
+      '<td style="padding:8px 12px">'+
+        '<input type="text" id="asist-nota-'+w.id+'" value="'+nota+'" '+
+        'placeholder="Nota opcional..." '+
+        'style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:.82rem">'+
+      '</td>'+
     '</tr>';
   }).join('');
+  actualizarContadorAsist();
+  openModal('modal-asistencia');
+}
 
-  var tabla = document.getElementById('asist-tabla');
-  tabla.innerHTML = rows || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">No hay trabajadores activos</td></tr>';
+function actualizarContadorAsist(){
+  var lista=db.trabajadores.filter(function(w){return w.estado==='Activo';});
+  var pres=lista.filter(function(w){var cb=document.getElementById('asist-check-'+w.id);return cb&&cb.checked;}).length;
+  var cont=document.getElementById('asist-contador');
+  if(cont) cont.textContent=pres+' presente'+(pres!==1?'s':'')+' / '+(lista.length-pres)+' ausente'+(lista.length-pres!==1?'s':'');
+}
 
-  // Attach event listeners using data attributes
-  tabla.querySelectorAll('.asist-select, .asist-input').forEach(function(el){
-    el.addEventListener('change', function(){
-      updateAsistencia(el.dataset.fecha, parseInt(el.dataset.worker), el.dataset.campo, el.value);
-    });
+function marcarTodosPresentes(){
+  db.trabajadores.filter(function(w){return w.estado==='Activo';}).forEach(function(w){var cb=document.getElementById('asist-check-'+w.id);if(cb)cb.checked=true;});
+  actualizarContadorAsist();
+}
+
+function marcarTodosAusentes(){
+  db.trabajadores.filter(function(w){return w.estado==='Activo';}).forEach(function(w){var cb=document.getElementById('asist-check-'+w.id);if(cb)cb.checked=false;});
+  actualizarContadorAsist();
+}
+
+function guardarAsistenciaNueva(){
+  var fecha=document.getElementById('asist-modal-fecha').value;
+  if(!fecha){toast('Selecciona una fecha');return;}
+  var tg=document.getElementById('asist-tarea-general').value;
+  var og=document.getElementById('asist-obs-general').value;
+  var lista=db.trabajadores.filter(function(w){return w.estado==='Activo';});
+  var workers=lista.map(function(w){
+    var cb=document.getElementById('asist-check-'+w.id);
+    var nota=document.getElementById('asist-nota-'+w.id);
+    return {id:w.id,nombre:w.nombre,rol:w.rol||'—',presente:cb?cb.checked:true,nota:nota?nota.value:''};;
   });
-
-  document.getElementById('asist-count-p').textContent = presentes;
-  document.getElementById('asist-count-a').textContent = ausentes;
-  var total = trabajadores.length;
-  document.getElementById('asist-resumen').innerHTML = total > 0 ?
-    '<div class="alert ' + (presentes===total?'alert-success':ausentes>0?'alert-warning':'alert-info') + '">' +
-    '📋 <strong>' + fmtDate(fecha) + '</strong> — ✅ Presentes: <strong>' + presentes + '</strong> · ❌ Ausentes: <strong>' + ausentes + '</strong> · ⏳ Pendientes: <strong>' + (total-presentes-ausentes) + '</strong> de ' + total + ' trabajadores</div>' : '';
-  document.getElementById('asist-lista-presentes').innerHTML = listaP.length ?
-    listaP.map(function(n){ return '<div style="padding:10px 18px;border-bottom:1px solid var(--border);font-size:.85rem">✅ <strong>' + n + '</strong></div>'; }).join('') :
-    '<div style="padding:16px 18px;color:var(--text-muted);font-size:.85rem">Sin presentes registrados</div>';
-  document.getElementById('asist-lista-ausentes').innerHTML = listaA.length ?
-    listaA.map(function(n){ return '<div style="padding:10px 18px;border-bottom:1px solid var(--border);font-size:.85rem">❌ <strong>' + n + '</strong></div>'; }).join('') :
-    '<div style="padding:16px 18px;color:var(--text-muted);font-size:.85rem">Sin ausentes registrados</div>';
+  if(!db.asistencia) db.asistencia=[];
+  db.asistencia=db.asistencia.filter(function(a){return a.fecha!==fecha;});
+  db.asistencia.push({id:genId(db.asistencia),fecha:fecha,tareaGeneral:tg,obsGeneral:og,
+    workers:workers,presentes:workers.filter(function(w){return w.presente;}).length,
+    ausentes:workers.filter(function(w){return !w.presente;}).length});
+  save('asistencia');
+  closeModal('modal-asistencia');
+  var fechaEl=document.getElementById('asist-fecha'); if(fechaEl) fechaEl.value=fecha;
+  toast('\u2705 Asistencia guardada para '+fmtDate(fecha));
+  renderAsistencia(); renderHistorialAsistencia();
 }
 
-function updateAsistencia(fecha, workerId, campo, valor){
-  var idx = db.asistencia.findIndex(function(a){ return a.fecha === fecha && a.workerId === workerId; });
-  if(idx >= 0){
-    db.asistencia[idx][campo] = valor;
-  } else {
-    var rec = { id: genId(db.asistencia), fecha: fecha, workerId: workerId, estado: 'pendiente', entrada: '', salida: '', notas: '' };
-    rec[campo] = valor;
-    db.asistencia.push(rec);
+function editAsistencia(){
+  var fecha=document.getElementById('asist-fecha')?document.getElementById('asist-fecha').value:'';
+  if(!fecha){toast('Selecciona una fecha');return;}
+  abrirNuevaAsistencia();
+}
+
+function renderAsistencia(){
+  var fecha=document.getElementById('asist-fecha')?document.getElementById('asist-fecha').value:'';
+  var tbody=document.getElementById('asist-tabla');
+  var tituloEl=document.getElementById('asist-reporte-titulo');
+  var resumenEl=document.getElementById('asist-resumen');
+  if(!fecha){
+    if(tbody) tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Selecciona una fecha</td></tr>';
+    return;
   }
-  save('asistencia');
-  renderAsistencia();
+  var reg=(db.asistencia||[]).find(function(a){return a.fecha===fecha;});
+  if(tituloEl) tituloEl.textContent='Reporte de Asistencia — '+fmtDate(fecha)+(reg&&reg.tareaGeneral?' — '+reg.tareaGeneral:'');
+  if(!reg){
+    if(tbody) tbody.innerHTML='<tr><td colspan="6"><div style="text-align:center;padding:32px;color:var(--text-muted)"><div style="font-size:2rem">📋</div><div style="font-weight:600;margin:8px 0">Sin registro para '+fmtDate(fecha)+'</div><button class="btn btn-primary btn-sm" onclick="abrirNuevaAsistencia()">+ Registrar ahora</button></div></td></tr>';
+    if(resumenEl) resumenEl.innerHTML='';
+    return;
+  }
+  if(resumenEl) resumenEl.innerHTML='<div class="cost-strip">'+
+    '<div class="cost-box"><div class="cost-box-val">'+reg.presentes+'</div><div class="cost-box-lbl">Presentes</div></div>'+
+    '<div class="cost-box"><div class="cost-box-val">'+reg.ausentes+'</div><div class="cost-box-lbl">Ausentes</div></div>'+
+    '<div class="cost-box"><div class="cost-box-val">'+( reg.workers?reg.workers.length:0)+'</div><div class="cost-box-lbl">Total</div></div>'+
+    (reg.tareaGeneral?'<div class="cost-box"><div class="cost-box-val" style="font-size:.85rem">'+reg.tareaGeneral+'</div><div class="cost-box-lbl">Tarea del dia</div></div>':'')+
+  '</div>';
+  if(!tbody) return;
+  if(!reg.workers||!reg.workers.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-muted)">Sin datos</td></tr>';return;}
+  tbody.innerHTML=reg.workers.map(function(w,i){
+    var bg=i%2===0?'#fff':'#f9fafb';
+    var pTag=w.presente
+      ?'<span style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:12px;font-weight:700;font-size:.8rem">Presente</span>'
+      :'<span style="background:#fde8e8;color:#b91c1c;padding:3px 10px;border-radius:12px;font-weight:700;font-size:.8rem">Ausente</span>';
+    return '<tr style="background:'+bg+';border-bottom:1px solid #e5e7eb">'+
+      '<td style="padding:10px 13px;text-align:center;color:var(--text-muted)">'+( i+1)+'</td>'+
+      '<td style="padding:10px 13px"><strong style="'+( w.presente?'':' text-decoration:line-through;color:#999')+'">'+w.nombre+'</strong></td>'+
+      '<td style="padding:10px 13px;color:var(--text-muted)">'+( w.rol||'—')+'</td>'+
+      '<td style="padding:10px 13px">'+pTag+'</td>'+
+      '<td style="padding:10px 13px;font-size:.85rem">'+( reg.tareaGeneral||'—')+'</td>'+
+      '<td style="padding:10px 13px;font-size:.82rem;color:var(--text-muted)">'+( w.nota||reg.obsGeneral||'—')+'</td>'+
+    '</tr>';
+  }).join('');
 }
 
-function guardarAsistencia(){
-  save('asistencia');
-  toast('✅ Asistencia guardada para ' + fmtDate(document.getElementById('asist-fecha').value));
-}
 
 function renderHistorialAsistencia(){
   var d = document.getElementById('asist-hist-d').value;
