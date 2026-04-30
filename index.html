@@ -2987,7 +2987,8 @@ function showView(id){
   const renders={dashboard:renderDashboard,facturas:renderFacturas,ventas:renderVentas,adelantos:renderAdelantos,asistencia:function(){ var el=document.getElementById("asist-fecha"); if(el&&!el.value) el.value=today(); renderAsistencia(); renderHistorialAsistencia(); },envases:renderEnvases,cosechas:renderCosechas,insumos:renderInsumos,inventario:renderInventario,trabajadores:renderTrabajadores,liquidaciones:renderLiquidaciones,costos:renderCostos,clima:renderClima,calendario:renderCalendario,alertas:renderAlertas,reportes:renderReportes,exportar:renderExport,ganado:renderGanado,sanidad:renderSanidad,reproduccion:renderReproduccion,creditos:renderCreditos,presupuesto:renderPresupuesto};
   if(renders[id]) renders[id]();
   // Re-render after 1.5s to catch Firebase data if it arrives late
-  if(id !== 'dashboard'){
+  // EXCEPTION: liquidaciones - delayed render resets worker selection
+  if(id !== 'dashboard' && id !== 'liquidaciones'){
     setTimeout(function(){
       if(document.getElementById('view-'+id) && document.getElementById('view-'+id).classList.contains('active')){
         try{ if(renders[id]) renders[id](); } catch(e){}
@@ -3657,6 +3658,15 @@ function updateWorkerSelects(){
   ['j-worker','ev-resp'].forEach(id=>{ const el=document.getElementById(id); if(el){ const v=el.value; el.innerHTML=(id==='j-worker'?'<option value="">Seleccionar...</option>':opts.replace('<option value="">Sin asignar</option>','<option value="">Sin asignar</option>'))+db.trabajadores.map(w=>`<option value="${w.id}">${w.nombre}</option>`).join(''); if(v) el.value=v; }});
   document.getElementById('j-worker').innerHTML='<option value="">Seleccionar...</option>'+db.trabajadores.map(w=>`<option value="${w.id}">${w.nombre}</option>`).join('');
   document.getElementById('ev-resp').innerHTML='<option value="">Sin asignar</option>'+db.trabajadores.map(w=>`<option value="${w.id}">${w.nombre}</option>`).join('');
+  // Populate liq-worker select preserving current selection
+  var liqEl = document.getElementById('liq-worker');
+  if(liqEl){
+    var curVal = liqEl.value;
+    liqEl.innerHTML = '<option value="">Todos los activos</option>' +
+      db.trabajadores.filter(function(w){ return w.estado==='Activo'; })
+        .map(function(w){ return '<option value="'+w.id+'">'+w.nombre+'</option>'; }).join('');
+    if(curVal) liqEl.value = curVal;
+  }
 }
 
 function renderTrabajadores(){
