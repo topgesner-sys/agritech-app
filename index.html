@@ -1289,7 +1289,6 @@ textarea{resize:vertical;min-height:72px}
           </table>
         </div>
       </div>
-    </div>
   </div>
 
   <!-- ======== EXPORTAR ======== -->
@@ -1429,7 +1428,18 @@ textarea{resize:vertical;min-height:72px}
     <div class="form-group"><label>Nombre completo *</label><input type="text" id="w-nom" placeholder="Juan Pérez"></div>
     <div class="form-group"><label>RUT / ID</label><input type="text" id="w-rut" placeholder="12.345.678-9"></div>
     <div class="form-group"><label>Cargo / Rol</label>
-      <select id="w-rol"><option>Temporero</option><option>Operario</option><option>Tractorista</option><option>Supervisor</option><option>Otro</option></select>
+      <select id="w-rol" onchange="toggleCatOtro('w-rol','w-rol-otro')">
+        <option>Temporero</option>
+        <option>Operario</option>
+        <option>Tractorista</option>
+        <option>Supervisor</option>
+        <option>Regador</option>
+        <option>Podador</option>
+        <option>Embalador</option>
+        <option>Otro</option>
+        <option value="__custom__">✏️ Personalizado...</option>
+      </select>
+      <input type="text" id="w-rol-otro" placeholder="Escribe el cargo..." style="display:none;margin-top:6px">
     </div>
     <div class="form-group"><label>Teléfono</label><input type="text" id="w-tel" placeholder="+56 9 1234 5678"></div>
     <div class="form-group"><label>Estado</label>
@@ -5959,7 +5969,7 @@ function renderEnvases(){
       '<td style="font-size:.78rem">'+(cos?cos.tipo+' '+fmtDate(cos.fecha):'—')+'</td>' +
       '<td><span class="mono">'+fmtDate(e.fecha)+'</span></td>' +
       '<td style="font-size:.78rem;color:var(--text-muted)">'+(e.notas||'—')+'</td>' +
-      '<td><button class="btn btn-danger btn-sm env-del-btn" data-id="'+e.id+'">🗑</button></td>' +
+      '<td style="white-space:nowrap"><button class="btn btn-secondary btn-sm env-edit-btn" data-id="'+e.id+'" style="margin-right:3px">✏️</button><button class="btn btn-danger btn-sm env-del-btn" data-id="'+e.id+'">🗑</button></td>' +
     '</tr>';
   }).join('') : '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">🧺 Sin movimientos registrados</td></tr>';
 
@@ -5967,6 +5977,12 @@ function renderEnvases(){
   if(tbody) tbody.querySelectorAll('.env-del-btn').forEach(function(btn){
     btn.addEventListener('click', function(){
       del('envases', parseInt(btn.dataset.id), renderEnvases);
+    });
+  });
+  // Edit buttons
+  tbody.querySelectorAll('.env-edit-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      openEdit('envases', parseInt(btn.dataset.id));
     });
   });
 
@@ -6185,7 +6201,17 @@ function editTrabajador(id){
   set('w-estado', w.estado);
   // Set rol select
   var rolEl = document.getElementById('w-rol');
-  if(rolEl) rolEl.value = w.rol || 'Temporero';
+  var rolOtroEl = document.getElementById('w-rol-otro');
+  if(rolEl){
+    var stdRoles = ['Temporero','Operario','Tractorista','Supervisor','Regador','Podador','Embalador','Otro'];
+    if(stdRoles.includes(w.rol)){
+      rolEl.value = w.rol || 'Temporero';
+      if(rolOtroEl) rolOtroEl.style.display = 'none';
+    } else {
+      rolEl.value = '__custom__';
+      if(rolOtroEl){ rolOtroEl.value = w.rol || ''; rolOtroEl.style.display = 'block'; }
+    }
+  }
   // Set tarifas
   set('w-tarifa', w.tarifa);
   set('w-tarifa-dia', w.tarifaDia);
