@@ -2,8 +2,11 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AgriTech v2 – Gestión Agrícola Integral</title>
+<title>AgriTech v2.1 – Gestión Agrícola Integral</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
@@ -410,7 +413,7 @@ textarea{resize:vertical;min-height:72px}
     <div class="logo-mark">🌿</div>
     <div class="logo-name">AgriTech</div>
     <div class="logo-sub">Gestión Agrícola</div>
-    <div class="logo-ver">v2.0 Pro</div>
+    <div class="logo-ver">v2.1 Pro — Asistencia Nueva</div>
   </div>
   <nav class="sidebar-nav">
     <span class="nav-label">Principal</span>
@@ -6999,8 +7002,14 @@ function printResumenTrabajador(workerId){
 
 
 // ========== INIT ==========
+function checkVersion(){
+  var ver = document.querySelector('.logo-ver');
+  if(ver) ver.style.color = '#52b788';
+}
+
 function init(){
-  console.log('INIT START');
+  console.log('INIT START v2.1');
+  checkVersion();
   // seed() removed - data comes from Firebase cloud
   
   const safeSet=(id,val)=>{try{const el=document.getElementById(id);if(el)el.value=val;}catch(e){}};
