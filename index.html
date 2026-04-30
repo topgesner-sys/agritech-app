@@ -678,6 +678,7 @@ textarea{resize:vertical;min-height:72px}
     </div>
     <div class="stats-grid" id="liq-stats" style="margin-bottom:18px"></div>
     <div id="liq-container"></div>
+    <div id="liq-cards"></div>
   </div>
 
   <!-- ======== VENTAS / INGRESOS ======== -->
@@ -2676,12 +2677,23 @@ function loadFromCloud(){
         if(loadedCount >= totalKeys){
           showSyncStatus('🔴 En vivo', '#52b788');
           renderDashboard();
-          // Also refresh current view
-          var activeView = document.querySelector('.view.active');
-          if(activeView){
-            var vid = activeView.id.replace('view-','');
-            var renders2 = {trabajadores:renderTrabajadores, cosechas:renderCosechas, liquidaciones:renderLiquidaciones};
-            if(renders2[vid]) try{ renders2[vid](); }catch(e){}
+          // Refresh whatever view is currently active
+          var activeView2 = document.querySelector('.view.active');
+          if(activeView2){
+            var vid2 = activeView2.id.replace('view-','');
+            var allRenders = {
+              trabajadores:renderTrabajadores, cosechas:renderCosechas,
+              liquidaciones:renderLiquidaciones, costos:renderCostos,
+              inventario:renderInventario, insumos:renderInsumos,
+              envases:renderEnvases, asistencia:function(){ 
+                var el=document.getElementById('asist-fecha'); 
+                if(el&&!el.value) el.value=today(); 
+                renderAsistencia(); renderHistorialAsistencia(); 
+              },
+              adelantos:renderAdelantos, facturas:renderFacturas, ventas:renderVentas,
+              clima:renderClima, calendario:renderCalendario,
+            };
+            if(allRenders[vid2]) try{ allRenders[vid2](); }catch(e){ console.warn('Render error:',e.message); }
           }
         }
       }, function(err){
@@ -2722,6 +2734,10 @@ function refreshCurrentView(changedKey){
     asistencia: ['asistencia'],
     envases: ['envases'],
     compradores: ['envases'],
+    adelantos: ['adelantos','trabajadores'],
+    facturas: ['facturas'],
+    ventas: ['ventas'],
+    empresa: [],
   };
   
   var relevantViews = keyViewMap[changedKey] || [];
@@ -2743,6 +2759,9 @@ function refreshCurrentView(changedKey){
       presupuesto: renderPresupuesto,
       asistencia: renderAsistencia,
       envases: renderEnvases,
+      adelantos: renderAdelantos,
+      facturas: renderFacturas,
+      ventas: renderVentas,
     };
     if(renders[viewId]) {
       try { renders[viewId](); } catch(e) { console.warn('Refresh error:', e.message); }
@@ -6089,6 +6108,17 @@ function renderEnvases(){
 
 // ========== LIQUIDACIONES ==========
 function renderLiquidaciones(){
+  // Auto-set dates to this month if empty
+  var dEl = document.getElementById('liq-d');
+  var hEl = document.getElementById('liq-h');
+  if(dEl && !dEl.value){
+    var now = new Date();
+    dEl.value = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01';
+  }
+  if(hEl && !hEl.value){
+    var now2 = new Date();
+    hEl.value = now2.toISOString().split('T')[0];
+  }
   // Update worker select
   var liqWorkerEl = document.getElementById('liq-worker');
   if(liqWorkerEl){
