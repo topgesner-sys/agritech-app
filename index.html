@@ -2607,9 +2607,11 @@ function showSyncStatus(msg, color){
 // ========== FIREBASE SYNC ==========
 async function syncToCloud(key){
   if(!_syncEnabled || !_fundoId) return;
+  // Safety: don't sync empty array unless intentional delete
+  var items = db[key] || [];
   try {
     await _db.collection('fundos').doc(_fundoId).collection(key).doc('data')
-      .set({ items: db[key], updatedAt: new Date().toISOString() });
+      .set({ items: items, updatedAt: new Date().toISOString() });
     showSyncStatus('✅ Guardado en nube', '#52b788');
     setTimeout(function(){ showSyncStatus('🟢 En vivo', '#52b788'); }, 2000);
   } catch(e) {
@@ -2644,13 +2646,31 @@ function loadFromCloud(){
       var unsub = ref.onSnapshot(function(doc){
         if(doc.exists && doc.data() && doc.data().items){
           var newItems = doc.data().items;
-          // Only update if data actually changed
-          if(JSON.stringify(db[key]) !== JSON.stringify(newItems)){
-            db[key] = newItems;
-            save(key);
-            // Re-render current view if relevant
-            refreshCurrentView(key);
+          var localItems = db[key] || [];
+          // SAFETY: Never overwrite local data with empty Firebase data
+          // This prevents data loss if Firebase hasn't synced yet
+          if(newItems.length === 0 && localItems.length > 0){
+            // Firebase is empty but we have local data - push local UP to Firebase
+            console.log('Safety: pushing local data to Firebase for', key, localItems.length, 'items');
+            syncToCloud(key);
+            return;
           }
+          // Only update if Firebase has MORE or EQUAL items (prevents regression)
+          // OR if the data is genuinely different (edits/deletions)
+          var newStr = JSON.stringify(newItems);
+          var localStr = JSON.stringify(localItems);
+          if(newStr !== localStr && newItems.length >= localItems.length - 1){
+            db[key] = newItems;
+            try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
+            refreshCurrentView(key);
+          } else if(newItems.length < localItems.length - 1){
+            // Firebase has significantly fewer items - likely not synced yet
+            console.warn('Firebase has fewer items for', key, '- keeping local data');
+          }
+        } else if(!doc.exists && (db[key]||[]).length > 0){
+          // Doc doesn't exist in Firebase - push local data up
+          console.log('Doc missing in Firebase for', key, '- pushing local data');
+          syncToCloud(key);
         }
         loadedCount++;
         if(loadedCount >= totalKeys){
@@ -7086,6 +7106,29 @@ function printResumenTrabajador(workerId){
 }
 
 
+
+// ========== DATA RECOVERY ==========
+function checkAndRecoverData(){
+  var recovered = 0;
+  KEYS.forEach(function(k){
+    var current = db[k] || [];
+    var backup = [];
+    try { backup = JSON.parse(_store.get('agt2_backup_'+k)||'[]'); } catch(e){}
+    // If current is empty but backup has data, restore from backup
+    if(current.length === 0 && backup.length > 0){
+      db[k] = backup;
+      save(k);
+      recovered++;
+      console.log('Recovered', backup.length, 'items for', k, 'from backup');
+    }
+  });
+  if(recovered > 0){
+    toast('✅ ' + recovered + ' módulos recuperados del respaldo automático');
+    renderDashboard();
+  }
+  return recovered;
+}
+
 // ========== INIT ==========
 function checkVersion(){
   var ver = document.querySelector('.logo-ver');
@@ -7095,6 +7138,15 @@ function checkVersion(){
 function init(){
   console.log('INIT START v2.1');
   checkVersion();
+  // Auto-backup every 5 minutes to prevent data loss
+  setInterval(function(){
+    KEYS.forEach(function(k){
+      if((db[k]||[]).length > 0){
+        try { _store.set('agt2_backup_'+k, JSON.stringify(db[k])); } catch(e){}
+      }
+    });
+    console.log('Auto-backup completed at', new Date().toLocaleTimeString());
+  }, 5 * 60 * 1000);
   // seed() removed - data comes from Firebase cloud
   
   const safeSet=(id,val)=>{try{const el=document.getElementById(id);if(el)el.value=val;}catch(e){}};
