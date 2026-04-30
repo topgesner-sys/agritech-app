@@ -6159,7 +6159,11 @@ function renderLiquidaciones(){
   }
 
   // Summary stats
-  var allJornadas = db.jornadas.filter(function(j){ return inRange(j.fecha, d, h); });
+  var allJornadas = db.jornadas.filter(function(j){ 
+    if(!inRange(j.fecha, d, h)) return false;
+    if(wid && j.workerId !== wid) return false;  // Filter by selected worker
+    return true;
+  });
   var totalPago = allJornadas.reduce(function(s,j){ return s+j.pago; }, 0);
   var statsEl = document.getElementById('liq-stats');
   if(statsEl){
