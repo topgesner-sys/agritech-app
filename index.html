@@ -416,7 +416,7 @@ textarea{resize:vertical;min-height:72px}
     <div class="logo-mark">🌿</div>
     <div class="logo-name">AgriTech</div>
     <div class="logo-sub">Gestión Agrícola</div>
-    <div class="logo-ver">v2.3 — Fix Envases</div>
+    <div class="logo-ver">v2.3 — Universal Fix</div>
   </div>
   <nav class="sidebar-nav">
     <span class="nav-label">Principal</span>
@@ -7464,6 +7464,30 @@ function checkVersion(){
 function init(){
   console.log('INIT START v2.1');
   checkVersion();
+
+  // AUTO-FIX UNIVERSAL: Detecta y corrige divs mal anidados por cache vieja
+  // Funciona para TODOS los usuarios sin importar que version tengan en cache
+  (function fixDOMNesting(){
+    var cont = document.querySelector('.content');
+    if(!cont) return;
+    var ids = ['view-envases','view-compradores','view-clima','view-calendario',
+               'view-alertas','view-reportes','view-exportar','view-ganado',
+               'view-sanidad','view-reproduccion','view-presupuesto','view-creditos',
+               'view-asistencia','view-cosechas','view-insumos','view-inventario'];
+    var fixed = 0;
+    ids.forEach(function(vid){
+      var el = document.getElementById(vid);
+      if(!el) return;
+      // Si el padre es otro view-*, moverlo directamente a .content
+      if(el.parentElement && el.parentElement.id && el.parentElement.id.startsWith('view-')){
+        cont.appendChild(el);
+        fixed++;
+        console.log('[v2.3 AutoFix] Moved #'+vid+' out of #'+el.parentElement.id);
+      }
+    });
+    if(fixed > 0) console.log('[v2.3 AutoFix] Fixed '+fixed+' nested views');
+  })();
+
   // Auto-backup every 5 minutes to prevent data loss
   setInterval(function(){
     KEYS.forEach(function(k){
