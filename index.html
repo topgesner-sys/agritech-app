@@ -3554,6 +3554,21 @@ function saveEvento(){
   const nom=document.getElementById('ev-nom').value;
   const fecha=document.getElementById('ev-fecha').value;
   if(!nom||!fecha){ toast('⚠️ Nombre y fecha requeridos'); return; }
+  if(_editId && _editModule==='eventos'){
+    var idx2=(db.eventos||[]).findIndex(function(x){return x.id===_editId;});
+    if(idx2>=0){
+      Object.assign(db.eventos[idx2],{
+        nombre:document.getElementById('ev-nom').value,
+        tipo:document.getElementById('ev-tipo').value,
+        fecha:document.getElementById('ev-fecha').value,
+        resp:parseInt(document.getElementById('ev-resp').value)||0,
+        estado:document.getElementById('ev-estado').value,
+        obs:document.getElementById('ev-obs').value
+      });
+    }
+    _editId=null; _editModule=null; save('eventos'); closeModal('modal-evento');
+    toast('Tarea actualizada'); renderCalendario(); return;
+  }
   db.eventos.push({id:genId(db.eventos),nombre:nom,tipo:document.getElementById('ev-tipo').value,fecha,resp:parseInt(document.getElementById('ev-resp').value)||0,estado:document.getElementById('ev-estado').value,obs:document.getElementById('ev-obs').value});
   save('eventos'); closeModal('modal-evento');
   ['ev-nom','ev-fecha','ev-obs'].forEach(i=>document.getElementById(i).value='');
@@ -4013,7 +4028,7 @@ function renderCalendario(){
 
   const sorted=[...db.eventos].sort((a,b)=>a.fecha.localeCompare(b.fecha));
   document.getElementById('tabla-eventos').innerHTML=sorted.length
-    ?sorted.map(e=>{ const w=db.trabajadores.find(x=>x.id===e.resp); return `<tr><td><strong>${e.nombre}</strong></td><td>${badge(e.tipo)}</td><td>${mono(fmtDate(e.fecha))}</td><td>${w?w.nombre:'—'}</td><td>${badge(e.estado)}</td><td><button class="btn btn-danger btn-sm" onclick="del('eventos',${e.id},renderCalendario)">🗑</button></td></tr>`; }).join('')
+    ?sorted.map(e=>{ const w=db.trabajadores.find(x=>x.id===e.resp); return `<tr><td><strong>${e.nombre}</strong></td><td>${badge(e.tipo)}</td><td>${mono(fmtDate(e.fecha))}</td><td>${w?w.nombre:'—'}</td><td>${badge(e.estado)}</td><td><button class="btn btn-secondary btn-sm" onclick="evtEdit(${e.id})" style="margin-right:4px">✏️</button><button class="btn btn-danger btn-sm" onclick="del('eventos',${e.id},renderCalendario)">🗑</button></td></tr>`; }).join('')
     :'<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">Sin tareas</td></tr>';
 }
 
@@ -4709,7 +4724,7 @@ function renderCrCreditos(){
         <div class="progress"><div class="progress-fill" style="width:${pctPag}%;background:${col}"></div></div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
           ${c.estado==='Vigente'&&pagadas<c.cuotasTotal?`<button class="btn btn-primary btn-sm" onclick="openPagarCuota(${c.id})">+ Pagar cuota</button>`:''}
-          <button class="btn btn-danger btn-sm" onclick="if(confirm('¿Eliminar crédito?')){db.creditos=db.creditos.filter(x=>x.id!==${c.id});save('creditos');renderCreditos();}">🗑 Eliminar</button>
+          <button class="btn btn-secondary btn-sm" onclick="credEdit(c.id)" style="margin-right:4px">✏️</button><button class="btn btn-danger btn-sm" onclick="if(confirm('¿Eliminar crédito?')){db.creditos=db.creditos.filter(x=>x.id!==${c.id});save('creditos');renderCreditos();}">🗑 Eliminar</button>
         </div>
       </div>
     </div>`;
@@ -4722,7 +4737,7 @@ function renderCrCreditos(){
     <td>${mono(fmtDate(q.fecha))}</td><td>${mono(fmtMoney(q.capital))}</td>
     <td>${mono(fmtMoney(q.interes))}</td><td>${mono(fmtMoney((q.seguro||0)+(q.comision||0)))}</td>
     <td style="font-weight:700">${mono(fmtMoney(q.total))}</td>
-    <td><button class="btn btn-danger btn-sm" onclick="del('cuotas',${q.id},renderCrCreditos)">🗑</button></td></tr>`;
+    <td><button class="btn btn-secondary btn-sm" onclick="cuotaEdit(${q.id})" style="margin-right:4px">✏️</button><button class="btn btn-danger btn-sm" onclick="del('cuotas',${q.id},renderCrCreditos)">🗑</button></td></tr>`;
   }).join(''):'<tr><td colspan="8" style="text-align:center;padding:18px;color:var(--text-muted)">Sin cuotas registradas</td></tr>';
 }
 
@@ -4966,7 +4981,22 @@ function saveAnimal(){
   const fecha=document.getElementById('a-fecha').value;
   if(!especie||!arete||!sexo||!fecha){ toast('⚠️ Completa especie, arete, sexo y fecha'); return; }
   readImgAsB64('a-foto',foto=>{
-    db.animales.push({
+    if(_editId && _editModule==='animales'){
+    var idx2=(db.animales||[]).findIndex(function(x){return x.id===_editId;});
+    if(idx2>=0){
+      var upd=db.animales[idx2];
+      upd.nombre=document.getElementById('ani-nombre')?document.getElementById('ani-nombre').value:'';
+      upd.especie=document.getElementById('ani-especie')?document.getElementById('ani-especie').value:'';
+      upd.raza=document.getElementById('ani-raza')?document.getElementById('ani-raza').value:'';
+      upd.sexo=document.getElementById('ani-sexo')?document.getElementById('ani-sexo').value:'';
+      upd.peso=parseFloat(document.getElementById('ani-peso')?document.getElementById('ani-peso').value:0)||0;
+      upd.color=document.getElementById('ani-color')?document.getElementById('ani-color').value:'';
+      upd.obs=document.getElementById('ani-obs')?document.getElementById('ani-obs').value:'';
+    }
+    _editId=null; _editModule=null; save('animales'); closeModal('modal-animal');
+    toast('Animal actualizado'); renderGanado(); return;
+  }
+  db.animales.push({
       id:genId(db.animales),especie,nombre:document.getElementById('a-nombre').value||arete,
       arete,sexo,nacimiento:document.getElementById('a-nacimiento').value||'',
       peso:parseFloat(document.getElementById('a-peso').value)||0,
@@ -5077,7 +5107,7 @@ function renderGanado(){
           <td>${mono(a.peso>0?a.peso+' kg':'—')}</td>
           <td>${a.potrero}</td>
           <td>${badge(a.estado)}</td>
-          <td><button class="btn btn-danger btn-sm" onclick="del('animales',${a.id},()=>{renderGanado();updateAnimalSelects()})">🗑</button></td>
+          <td><button class="btn btn-secondary btn-sm" onclick="animEdit(${a.id})" style="margin-right:4px">✏️</button><button class="btn btn-danger btn-sm" onclick="del('animales',${a.id},()=>{renderGanado();updateAnimalSelects()})">🗑</button></td>
         </tr>`;
       }).join('')
       :'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-muted)">🐾 Sin animales registrados</td></tr>';
@@ -5096,6 +5126,22 @@ function saveSanidad(){
   const producto=document.getElementById('san-producto').value.trim();
   const fecha=document.getElementById('san-fecha').value;
   if(!animalId||!tipo||!producto||!fecha){ toast('⚠️ Completa los campos requeridos'); return; }
+  if(_editId && _editModule==='sanidad'){
+    var idx2=(db.sanidad||[]).findIndex(function(x){return x.id===_editId;});
+    if(idx2>=0){
+      Object.assign(db.sanidad[idx2],{
+        animalId:parseInt(document.getElementById('san-animal')?document.getElementById('san-animal').value:0)||0,
+        tipo:document.getElementById('san-tipo')?document.getElementById('san-tipo').value:'',
+        fecha:document.getElementById('san-fecha')?document.getElementById('san-fecha').value:'',
+        producto:document.getElementById('san-producto')?document.getElementById('san-producto').value:'',
+        dosis:document.getElementById('san-dosis')?document.getElementById('san-dosis').value:'',
+        costo:parseFloat(document.getElementById('san-costo')?document.getElementById('san-costo').value:0)||0,
+        obs:document.getElementById('san-obs')?document.getElementById('san-obs').value:''
+      });
+    }
+    _editId=null; _editModule=null; save('sanidad'); closeModal('modal-sanidad');
+    toast('Registro actualizado'); renderSanidad(); return;
+  }
   db.sanidad.push({
     id:genId(db.sanidad),animalId,tipo,producto,
     dosis:document.getElementById('san-dosis').value||'—',
@@ -5151,7 +5197,7 @@ function renderSanidad(){
       <td>${s.proxFecha?mono(fmtDate(s.proxFecha)):'—'}</td>
       <td>${s.veterinario}</td>
       <td>${mono(fmtMoney(s.costo))}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="del('sanidad',${s.id},renderSanidad)">🗑</button></td>
+      <td><button class="btn btn-secondary btn-sm" onclick="sanEdit(${s.id})" style="margin-right:4px">✏️</button><button class="btn btn-danger btn-sm" onclick="del('sanidad',${s.id},renderSanidad)">🗑</button></td>
     </tr>`; }).join('')
     :'<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text-muted)">💉 Sin registros sanitarios</td></tr>';
 }
@@ -5240,7 +5286,7 @@ function renderReproduccion(){
       <td>${r.crias>0?mono(r.crias+' ('+r.sexoCrias+')'):'—'}</td>
       <td>${badge(r.resultado)}</td>
       <td style="font-size:.78rem;color:var(--text-muted);max-width:130px">${r.obs||'—'}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="del('reproduccion',${r.id},renderReproduccion)">🗑</button></td>
+      <td><button class="btn btn-secondary btn-sm" onclick="repEdit(${r.id})" style="margin-right:4px">✏️</button><button class="btn btn-danger btn-sm" onclick="del('reproduccion',${r.id},renderReproduccion)">🗑</button></td>
     </tr>`; }).join('')
     :'<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">🐣 Sin registros reproductivos</td></tr>';
 }
@@ -5651,6 +5697,88 @@ function limpiarFiltroAsist(){
   if(d) d.value = '';
   if(h) h.value = '';
   renderHistorialAsistencia();
+}
+
+
+// ========== EDIT HANDLERS PARA MÓDULOS SIN EDICIÓN ==========
+
+function animEdit(id){
+  var item = (db.animales||[]).find(function(x){ return x.id===id; });
+  if(!item){ toast('Animal no encontrado'); return; }
+  _editId = id; _editModule = 'animales';
+  var s = function(eid,v){ var el=document.getElementById(eid); if(el) el.value=v||''; };
+  s('ani-nombre', item.nombre); s('ani-especie', item.especie||item.tipo);
+  s('ani-raza', item.raza); s('ani-sexo', item.sexo); s('ani-fecha', item.fechaNac||item.fecha);
+  s('ani-peso', item.peso||0); s('ani-color', item.color); s('ani-obs', item.obs);
+  if(document.getElementById('ani-estado')) document.getElementById('ani-estado').value = item.estado||'Activo';
+  openModal('modal-animal');
+}
+
+function sanEdit(id){
+  var item = (db.sanidad||[]).find(function(x){ return x.id===id; });
+  if(!item){ toast('Registro no encontrado'); return; }
+  _editId = id; _editModule = 'sanidad';
+  var s = function(eid,v){ var el=document.getElementById(eid); if(el) el.value=v||''; };
+  s('san-animal', item.animalId); s('san-tipo', item.tipo); s('san-fecha', item.fecha);
+  s('san-producto', item.producto||item.descripcion); s('san-dosis', item.dosis);
+  s('san-costo', item.costo||0); s('san-obs', item.obs);
+  openModal('modal-sanidad');
+}
+
+function repEdit(id){
+  var item = (db.reproduccion||[]).find(function(x){ return x.id===id; });
+  if(!item){ toast('Registro no encontrado'); return; }
+  _editId = id; _editModule = 'reproduccion';
+  var s = function(eid,v){ var el=document.getElementById(eid); if(el) el.value=v||''; };
+  s('rep-animal', item.animalId||item.madreId); s('rep-tipo', item.tipo);
+  s('rep-fecha', item.fecha); s('rep-padre', item.padreId||item.padre);
+  s('rep-resultado', item.resultado); s('rep-obs', item.obs);
+  openModal('modal-reproduccion');
+}
+
+function compEdit(id){
+  id = parseInt(id);
+  var item = (db.compradores||[]).find(function(x){ return x.id===id; });
+  if(!item){ toast('Comprador no encontrado'); return; }
+  _editId = id; _editModule = 'compradores';
+  var s = function(eid,v){ var el=document.getElementById(eid); if(el) el.value=v||''; };
+  s('comp-nombre', item.nombre); s('comp-rut', item.rut); s('comp-tel', item.tel);
+  s('comp-contacto', item.contacto); s('comp-producto', item.producto);
+  openModal('modal-comprador');
+}
+
+function evtEdit(id){
+  var item = (db.eventos||[]).find(function(x){ return x.id===id; });
+  if(!item){ toast('Evento no encontrado'); return; }
+  _editId = id; _editModule = 'eventos';
+  var s = function(eid,v){ var el=document.getElementById(eid); if(el) el.value=v||''; };
+  s('ev-nom', item.nombre); s('ev-tipo', item.tipo); s('ev-fecha', item.fecha);
+  s('ev-resp', item.resp||0); s('ev-estado', item.estado); s('ev-obs', item.obs);
+  openModal('modal-evento');
+}
+
+function credEdit(id){
+  id = parseInt(id)||id;
+  var item = (db.creditos||[]).find(function(x){ return x.id===id; });
+  if(!item){ toast('Crédito no encontrado'); return; }
+  _editId = id; _editModule = 'creditos';
+  var s = function(eid,v){ var el=document.getElementById(eid); if(el) el.value=v||''; };
+  s('cred-entidad', item.entidad); s('cred-monto', item.montoTotal||item.monto);
+  s('cred-tasa', item.tasa||0); s('cred-plazo', item.plazo||0);
+  s('cred-fecha', item.fechaInicio||item.fecha); s('cred-obs', item.obs);
+  if(document.getElementById('cred-estado')) document.getElementById('cred-estado').value = item.estado||'Vigente';
+  openModal('modal-credito');
+}
+
+function cuotaEdit(id){
+  var item = (db.cuotas||[]).find(function(x){ return x.id===id; });
+  if(!item){ toast('Cuota no encontrada'); return; }
+  _editId = id; _editModule = 'cuotas';
+  var s = function(eid,v){ var el=document.getElementById(eid); if(el) el.value=v||''; };
+  s('cuota-credito', item.creditoId); s('cuota-fecha', item.fecha);
+  s('cuota-capital', item.capital||0); s('cuota-interes', item.interes||0);
+  s('cuota-otros', item.otros||0); s('cuota-obs', item.obs);
+  openModal('modal-cuota');
 }
 
 // ========== AUTH & MULTI-USER SYSTEM ==========
@@ -6151,6 +6279,20 @@ function populateEnvaseSelects(){
 function saveComprador(){
   var nom = document.getElementById('comp-nombre').value.trim();
   if(!nom){ toast('⚠️ Nombre requerido'); return; }
+  if(_editId && _editModule==='compradores'){
+    var idx2=(db.compradores||[]).findIndex(function(x){return x.id===_editId;});
+    if(idx2>=0){
+      Object.assign(db.compradores[idx2],{
+        nombre:document.getElementById('comp-nombre')?document.getElementById('comp-nombre').value:'',
+        rut:document.getElementById('comp-rut')?document.getElementById('comp-rut').value:'',
+        tel:document.getElementById('comp-tel')?document.getElementById('comp-tel').value:'',
+        contacto:document.getElementById('comp-contacto')?document.getElementById('comp-contacto').value:'',
+        producto:document.getElementById('comp-producto')?document.getElementById('comp-producto').value:''
+      });
+    }
+    _editId=null; _editModule=null; save('compradores'); closeModal('modal-comprador');
+    toast('Comprador actualizado'); renderCompradoresList(); return;
+  }
   db.compradores.push({
     id: genId(db.compradores),
     nombre: nom,
@@ -6180,7 +6322,7 @@ function renderCompradoresList(){
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#f9f9f9;border-radius:8px;margin-bottom:6px;border:1px solid var(--border)">' +
       '<div><div style="font-weight:700;font-size:.88rem;color:var(--green-deep)">'+c.nombre+'</div>' +
       '<div style="font-size:.73rem;color:var(--text-muted)">'+(c.rut||'')+(c.contacto?' · '+c.contacto:'')+(c.tel?' · '+c.tel:'')+'</div></div>' +
-      '<div style="display:flex;gap:6px;align-items:center">'+badge(c.producto||'Palta')+'<button class="btn btn-danger btn-sm comp-del-btn" data-id="'+c.id+'">🗑</button></div>' +
+      '<div style="display:flex;gap:6px;align-items:center">'+badge(c.producto||'Palta')+'<button class="btn btn-secondary btn-sm" onclick="compEdit('+c.id+')" style="margin-right:4px">✏️</button><button class="btn btn-danger btn-sm comp-del-btn" data-id="'+c.id+'">🗑</button></div>' +
     '</div>';
   }).join('');
   // Attach delete buttons
