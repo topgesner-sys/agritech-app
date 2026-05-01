@@ -2713,25 +2713,33 @@ function loadFromCloud(){
             try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
             refreshCurrentView(key);
           } else if(newItems.length > localItems.length){
-            // Firebase has MORE items than local = new records from another device
-            db[key] = newItems;
-            try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
-            refreshCurrentView(key);
+            // Firebase has MORE items = new records from another device
+            // But only if we haven't just saved locally (avoid overwrite race)
+            if(!_saveLock[key] || Date.now() > _saveLock[key]){
+              db[key] = newItems;
+              try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
+              refreshCurrentView(key);
+            } else {
+              console.log('[DataGuard] Save lock active for', key, '- skipping Firebase overwrite');
+            }
           } else if(newItems.length === localItems.length && newStr !== localStr){
-            // Same count but different content = an edit was made on another device
-            // SAFE: merge by keeping the most recent version of each record
-            var mergedMap = {};
-            localItems.forEach(function(item){ mergedMap[item.id] = item; });
-            newItems.forEach(function(item){
-              // Only update if Firebase item is newer (has changes not in local)
-              if(!mergedMap[item.id] || JSON.stringify(mergedMap[item.id]) !== JSON.stringify(item)){
-                mergedMap[item.id] = item;
-              }
-            });
-            var merged = Object.values(mergedMap).sort(function(a,b){ return (a.id||0)-(b.id||0); });
-            db[key] = merged;
-            try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
-            refreshCurrentView(key);
+            // Same count but different content = edit from another device
+            // Skip if we just saved locally
+            if(_saveLock[key] && Date.now() < _saveLock[key]){
+              console.log('[DataGuard] Save lock active for', key, '- skipping merge');
+            } else {
+              var mergedMap = {};
+              localItems.forEach(function(item){ mergedMap[item.id] = item; });
+              newItems.forEach(function(item){
+                if(!mergedMap[item.id] || JSON.stringify(mergedMap[item.id]) !== JSON.stringify(item)){
+                  mergedMap[item.id] = item;
+                }
+              });
+              var merged = Object.values(mergedMap).sort(function(a,b){ return (a.id||0)-(b.id||0); });
+              db[key] = merged;
+              try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
+              refreshCurrentView(key);
+            }
           } else if(newItems.length < localItems.length){
             // Firebase has FEWER items = local has newer data, push it up
             console.log('[DataGuard] Local has more items for', key, '- syncing local to Firebase');
@@ -2937,8 +2945,11 @@ function envDel(id){
   renderEnvases();
 }
 
+var _saveLock = {};
+
 function save(k){ 
   var data = JSON.stringify(db[k]);
+  _saveLock[k] = Date.now() + 5000;
   // PRIMARY: localStorage (survives reload)
   try { _store.set('agt2_'+k, data); } catch(e){}
   // SECONDARY: sessionStorage backup (survives navigation)
@@ -3179,12 +3190,14 @@ function openModal(id){
   if(id==='modal-animal'){ selectedEspecie=''; renderEspecieSelectGrid(); }
   if(id==='modal-especie'){ renderEspeciesLista(); }
 }
-function closeModal(id){ 
-  var el=document.getElementById(id); 
-  if(el){ 
-    el.style.display = 'none';
-    el.classList.remove('open');
-  } 
+function closeModal(id){
+  var el = document.getElementById(id);
+  if(el){ el.classList.remove('open'); }
+  // Reset edit state when user closes modal
+  var editModals = ['modal-jornada','modal-costo','modal-cosecha','modal-insumo',
+    'modal-inventario','modal-envase','modal-animal','modal-sanidad',
+    'modal-reproduccion','modal-comprador','modal-evento','modal-credito','modal-clima'];
+  if(editModals.indexOf(id) >= 0){ _editId = null; _editModule = null; }
 }
 function openQuickAdd(){
   // If on asistencia view, open asistencia modal directly
@@ -3477,11 +3490,14 @@ function saveJornada(){
     total += modalidad==='dia' ? precioHora : horas * precioHora;
   }
 
-  if(paltaBins===0&&paltaKg===0&&frutC1===0&&frutC2===0&&frutKg===0&&horas===0){
-    toast('⚠️ Ingresa al menos una cantidad'); return;
+  // Skip quantity validation in edit mode (existing data is already valid)
+  if(!(_editId && _editModule==='jornadas')){
+    if(paltaBins===0&&paltaKg===0&&frutC1===0&&frutC2===0&&frutKg===0&&horas===0){
+      toast('⚠️ Ingresa al menos una cantidad'); return;
+    }
   }
 
-    // EDIT MODE
+  // EDIT MODE
   if(_editId && _editModule==='jornadas'){
     var idx2 = (db.jornadas||[]).findIndex(function(x){ return x.id===_editId; });
     if(idx2 >= 0){
