@@ -2847,8 +2847,51 @@ KEYS.forEach(k => {
 // Ensure db key is always an array before use
 function ensureArray(k){ if(!db[k] || !Array.isArray(db[k])){ db[k]=[]; try{ var s=_store.get('agt2_'+k); if(s) db[k]=JSON.parse(s); }catch(e){} } return db[k]; }
 
-function envEdit(id){ openEdit('envases', id); }
-function envDel(id){ del('envases', id, renderEnvases); }
+function envEdit(id){
+  var item = (db.envases||[]).find(function(x){ return x.id===id; });
+  if(!item){ toast('No se encontró el envase'); return; }
+  
+  // Set edit state
+  _editId = id;
+  _editModule = 'envases';
+  
+  // Populate comprador select first
+  var compSel = document.getElementById('env-comprador');
+  if(compSel){
+    var opts = '<option value="">Seleccionar comprador...</option>' +
+      (db.compradores||[]).map(function(c){
+        return '<option value="'+c.id+'"'+(c.id===item.compradorId?' selected':'')+'>'+c.nombre+'</option>';
+      }).join('');
+    compSel.innerHTML = opts;
+  }
+  
+  // Fill all fields
+  var fields = {
+    'env-tipo': item.tipo,
+    'env-movimiento': item.movimiento,
+    'env-cantidad': item.cantidad,
+    'env-fecha': item.fecha,
+    'env-notas': item.notas||''
+  };
+  Object.keys(fields).forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.value = fields[id] || '';
+  });
+  
+  // Update title
+  var mt = document.querySelector('#modal-envase .modal-title');
+  if(mt) mt.textContent = '✏️ Editar Movimiento de Envase';
+  
+  // Open modal
+  openModal('modal-envase');
+}
+function envDel(id){
+  if(!confirm('¿Eliminar este movimiento de envase?')) return;
+  db.envases = (db.envases||[]).filter(function(x){ return x.id!==id; });
+  save('envases');
+  toast('Eliminado');
+  renderEnvases();
+}
 
 function save(k){ 
   // ALWAYS save to localStorage for instant persistence (survives reload)
