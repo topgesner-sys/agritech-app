@@ -1490,6 +1490,7 @@ textarea{resize:vertical;min-height:72px}
       <input type="text" id="w-rol-otro" placeholder="Escribe el cargo..." style="display:none;margin-top:6px">
     </div>
     <div class="form-group"><label>Teléfono</label><input type="text" id="w-tel" placeholder="+56 9 1234 5678"></div>
+    <div class="form-group"><label>Alias / Apodo</label><input type="text" id="w-alias" placeholder="Ej: Beto, La China, El Gordo..."></div>
     <div class="form-group"><label>Estado</label>
       <select id="w-estado"><option value="Activo">Activo</option><option value="Inactivo">Inactivo</option></select>
     </div>
@@ -3782,6 +3783,7 @@ function renderTrabajadores(){
       return '<div class="worker-card">'+
         avatar+
         '<div class="worker-name">'+w.nombre+'</div>'+
+        (w.alias ? '<div style="font-size:.75rem;color:var(--amber-dark);font-weight:600;margin-top:1px">«'+w.alias+'»</div>' : '')+
         '<div class="worker-role">'+(w.rol||'—')+'</div>'+
         '<div style="margin-top:8px">'+badge(w.estado||'Activo')+adelBadge+'</div>'+
         '<div class="worker-stats">'+
@@ -6080,6 +6082,27 @@ function saveEnvase(){
   var mov = document.getElementById('env-movimiento').value;
   var cant = parseInt(document.getElementById('env-cantidad').value) || 0;
   var fecha = document.getElementById('env-fecha').value;
+  var notas = document.getElementById('env-notas') ? document.getElementById('env-notas').value : '';
+
+  // EDIT MODE
+  if(_editId && _editModule==='envases'){
+    var idx2 = (db.envases||[]).findIndex(function(x){ return x.id===_editId; });
+    if(idx2 >= 0){
+      db.envases[idx2].compradorId = compId;
+      db.envases[idx2].tipo = tipo;
+      db.envases[idx2].movimiento = mov;
+      db.envases[idx2].cantidad = cant;
+      db.envases[idx2].fecha = fecha;
+      db.envases[idx2].notas = notas;
+    }
+    _editId = null; _editModule = null;
+    save('envases'); closeModal('modal-envase');
+    // Reset modal title
+    var mt = document.querySelector('#modal-envase .modal-title');
+    if(mt) mt.textContent = '📦 Registrar Movimiento de Envase';
+    toast('✅ Envase actualizado'); renderEnvases(); return;
+  }
+
   if(!db.compradores.length){ 
     closeModal('modal-envase'); 
     openModal('modal-comprador'); 
@@ -6446,6 +6469,8 @@ function editTrabajador(id){
   set('w-estado', w.estado);
   // Set rol select
   var rolEl = document.getElementById('w-rol');
+  var aliasEl = document.getElementById('w-alias');
+  if(aliasEl) aliasEl.value = w.alias || '';
   var rolOtroEl = document.getElementById('w-rol-otro');
   if(rolEl){
     var stdRoles = ['Temporero','Operario','Tractorista','Supervisor','Regador','Podador','Embalador','Otro'];
@@ -6515,6 +6540,7 @@ function saveTrabajador(){
         tarifa: parseFloat(document.getElementById('w-tarifa').value)||0,
         tarifaDia: parseFloat(document.getElementById('w-tarifa-dia')?document.getElementById('w-tarifa-dia').value:0)||0,
         tarifaCarga: parseFloat(document.getElementById('w-tarifa-carga')?document.getElementById('w-tarifa-carga').value:0)||0,
+        alias: document.getElementById('w-alias') ? document.getElementById('w-alias').value : '',
         tPaltaBin: parseFloat(document.getElementById('w-t-palta-bin')?document.getElementById('w-t-palta-bin').value:0)||0,
         tPaltaKg: parseFloat(document.getElementById('w-t-palta-kg')?document.getElementById('w-t-palta-kg').value:0)||0,
         tFrutC1: parseFloat(document.getElementById('w-t-frut-c1')?document.getElementById('w-t-frut-c1').value:0)||0,
@@ -7218,9 +7244,15 @@ function openEdit(module, id){
     var item=(db.envases||[]).find(function(x){return x.id===id;});
     if(!item) return; _editId=id; _editModule='envases';
     var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
-    s('env-tipo',item.tipo); s('env-mov',item.movimiento); s('env-cant',item.cantidad);
-    s('env-fecha',item.fecha); s('env-notas',item.notas);
+    s('env-tipo',item.tipo); 
+    s('env-movimiento',item.movimiento); 
+    s('env-cantidad',item.cantidad);
+    s('env-fecha',item.fecha); 
+    s('env-notas',item.notas||'');
     if(document.getElementById('env-comprador')) document.getElementById('env-comprador').value=item.compradorId||'';
+    // Update modal title to show editing
+    var mt = document.querySelector('#modal-envase .modal-title');
+    if(mt) mt.textContent = '✏️ Editar Movimiento de Envase';
     openModal('modal-envase'); return;
   }
 }
