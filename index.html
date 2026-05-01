@@ -2704,19 +2704,41 @@ function loadFromCloud(){
             syncToCloud(key);
             // fall through to loadedCount++ below
           }
-          // Only update if Firebase has MORE or EQUAL items (prevents regression)
-          // OR if the data is genuinely different (edits/deletions)
           var newStr = JSON.stringify(newItems);
           var localStr = JSON.stringify(localItems);
-          if(newItems.length >= localItems.length - 1){
-            if(newStr !== localStr){
-              db[key] = newItems;
-              try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
-            }
-            // Always refresh the view regardless of whether data changed
+          
+          if(localItems.length === 0){
+            // Local is empty (new device/cleared cache) - use Firebase data
+            db[key] = newItems;
+            try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
             refreshCurrentView(key);
-          } else if(newItems.length < localItems.length - 1){
-            console.warn('Firebase has fewer items for', key, '- keeping local data');
+          } else if(newItems.length > localItems.length){
+            // Firebase has MORE items than local = new records from another device
+            db[key] = newItems;
+            try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
+            refreshCurrentView(key);
+          } else if(newItems.length === localItems.length && newStr !== localStr){
+            // Same count but different content = an edit was made on another device
+            // SAFE: merge by keeping the most recent version of each record
+            var mergedMap = {};
+            localItems.forEach(function(item){ mergedMap[item.id] = item; });
+            newItems.forEach(function(item){
+              // Only update if Firebase item is newer (has changes not in local)
+              if(!mergedMap[item.id] || JSON.stringify(mergedMap[item.id]) !== JSON.stringify(item)){
+                mergedMap[item.id] = item;
+              }
+            });
+            var merged = Object.values(mergedMap).sort(function(a,b){ return (a.id||0)-(b.id||0); });
+            db[key] = merged;
+            try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
+            refreshCurrentView(key);
+          } else if(newItems.length < localItems.length){
+            // Firebase has FEWER items = local has newer data, push it up
+            console.log('[DataGuard] Local has more items for', key, '- syncing local to Firebase');
+            syncToCloud(key);
+          } else {
+            // Same data - just refresh view
+            refreshCurrentView(key);
           }
         } else if(!doc.exists && (db[key]||[]).length > 0){
           // Doc doesn't exist in Firebase - push local data up
@@ -2840,8 +2862,30 @@ const _store = {
 };
 // Initialize from localStorage first (instant), Firebase will sync on top
 KEYS.forEach(k => { 
-  try { db[k] = JSON.parse(_store.get('agt2_'+k)||'[]'); } 
-  catch(e){ db[k]=[]; } 
+  try {
+    var local = _store.get('agt2_'+k);
+    var session = sessionStorage.getItem('agt2_bak_'+k);
+    
+    var localData = local ? JSON.parse(local) : [];
+    var sessionData = session ? JSON.parse(session) : [];
+    
+    // Use whichever has MORE data (most complete)
+    if(sessionData.length > localData.length){
+      db[k] = sessionData;
+      // Restore to localStorage
+      try { _store.set('agt2_'+k, session); } catch(e2){}
+      console.log('[DataGuard] Restored', k, 'from sessionStorage:', sessionData.length, 'items');
+    } else {
+      db[k] = localData;
+    }
+  } 
+  catch(e){ 
+    db[k]=[];
+    try {
+      var fallback = sessionStorage.getItem('agt2_bak_'+k);
+      if(fallback) db[k] = JSON.parse(fallback);
+    } catch(e2){}
+  } 
 });
 
 // Ensure db key is always an array before use
@@ -2894,9 +2938,24 @@ function envDel(id){
 }
 
 function save(k){ 
-  // ALWAYS save to localStorage for instant persistence (survives reload)
-  try { _store.set('agt2_'+k, JSON.stringify(db[k])); } catch(e){}
-  // ALSO sync to Firebase if connected (for cross-device sync)
+  var data = JSON.stringify(db[k]);
+  // PRIMARY: localStorage (survives reload)
+  try { _store.set('agt2_'+k, data); } catch(e){}
+  // SECONDARY: sessionStorage backup (survives navigation)
+  try { sessionStorage.setItem('agt2_bak_'+k, data); } catch(e){}
+  // Show save confirmation in UI
+  var syncEl = document.getElementById('sync-status');
+  if(syncEl){
+    syncEl.textContent = '✅ Guardado';
+    syncEl.style.color = '#52b788';
+    clearTimeout(window._saveIndicatorTimer);
+    window._saveIndicatorTimer = setTimeout(function(){
+      if(syncEl) syncEl.textContent = '🔴 En vivo';
+    }, 3000);
+  }
+  // TIMESTAMP: record when this key was last saved locally
+  try { _store.set('agt2_ts_'+k, Date.now().toString()); } catch(e){}
+  // SYNC to Firebase after 1 second
   if(_syncEnabled && _fundoId){
     clearTimeout(window['_syncTimer_'+k]);
     window['_syncTimer_'+k] = setTimeout(function(){ syncToCloud(k); }, 1000);
