@@ -6100,10 +6100,7 @@ function saveEnvase(){
     toast('Envase actualizado'); renderEnvases(); return;
   }
 
-  if(!db.compradores || !db.compradores.length){
-    closeModal('modal-envase'); openModal('modal-comprador');
-    toast('Primero registra un comprador'); return;
-  }
+  // Validate - compId > 0 means user selected a comprador from the list
   if(!compId){ toast('Selecciona un comprador'); return; }
   if(!cant || cant <= 0){ toast('Ingresa la cantidad'); return; }
   if(!fecha){ toast('Selecciona la fecha'); return; }
