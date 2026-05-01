@@ -1255,7 +1255,7 @@ textarea{resize:vertical;min-height:72px}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-secondary" onclick="openModal('modal-comprador')">🏢 Compradores</button>
-        <button class="btn btn-primary" onclick="populateEnvaseSelects();openModal('modal-envase')">＋ Movimiento</button>
+        <button class="btn btn-primary" onclick="populateEnvaseSelects();document.getElementById('env-fecha')&&(document.getElementById('env-fecha').value=today());_editId=null;_editModule=null;openModal('modal-envase')">＋ Movimiento</button>
       </div>
     </div>
 
@@ -2589,7 +2589,7 @@ textarea{resize:vertical;min-height:72px}
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-jornada')"><span style="font-size:18px">👷</span> Registrar Jornada</button>
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-costo')"><span style="font-size:18px">💰</span> Registrar Gasto</button>
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-clima')"><span style="font-size:18px">🌦️</span> Registrar Clima</button>
-    <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-envase');populateEnvaseSelects()"><span style="font-size:18px">🧺</span> Registrar Envase</button>
+    <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');populateEnvaseSelects();document.getElementById('env-fecha')&&(document.getElementById('env-fecha').value=today());openModal('modal-envase');populateEnvaseSelects()"><span style="font-size:18px">🧺</span> Registrar Envase</button>
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-animal')"><span style="font-size:18px">🐄</span> Registrar Animal</button>
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-sanidad')"><span style="font-size:18px">💉</span> Evento Sanitario</button>
     <button class="btn btn-secondary" style="justify-content:flex-start;padding:13px 16px;border:1.5px solid var(--border)" onclick="closeModal('modal-quick');openModal('modal-evento')"><span style="font-size:18px">📅</span> Nueva Tarea</button>
@@ -2830,6 +2830,8 @@ var _originalSave = null; // will be set after save() is defined
 // ========== DATA ==========
 const KEYS = ['cosechas','insumos','inventario','trabajadores','jornadas','costos','clima','eventos','animales','sanidad','reproduccion','especies','creditos','cuotas','proyecciones','presupuestos','presupItems','asistencia','envases','compradores','facturas','ventas','adelantos','empresa'];
 let db = {};
+var _editId   = null;   // ID of record being edited
+var _editModule = null; // Module name of record being edited
 
 // Safe storage wrapper - works on file:// and online
 const _store = {
@@ -6088,7 +6090,9 @@ function renderCompradoresList(){
 }
 
 function saveEnvase(){
+  console.log('[saveEnvase] called, _editId=', _editId, '_editModule=', _editModule);
   var compId = parseInt(document.getElementById('env-comprador').value) || 0;
+  console.log('[saveEnvase] compId=', compId, 'cant=', document.getElementById('env-cantidad').value, 'fecha=', document.getElementById('env-fecha') ? document.getElementById('env-fecha').value : 'N/A');
   var tipo   = document.getElementById('env-tipo') ? document.getElementById('env-tipo').value : '';
   var mov    = document.getElementById('env-movimiento') ? document.getElementById('env-movimiento').value : '';
   var cant   = parseFloat(document.getElementById('env-cantidad').value) || 0;
@@ -7243,6 +7247,10 @@ function openEdit(module, id){
     // Update modal title to show editing
     var mt = document.querySelector('#modal-envase .modal-title');
     if(mt) mt.textContent = '✏️ Editar Movimiento de Envase';
+    // Ensure select is populated before opening
+    populateEnvaseSelects();
+    // Set comprador AFTER populate
+    if(document.getElementById('env-comprador')) document.getElementById('env-comprador').value = item.compradorId || '';
     openModal('modal-envase'); return;
   }
 }
