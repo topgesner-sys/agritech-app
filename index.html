@@ -618,7 +618,7 @@ textarea{resize:vertical;min-height:72px}
           style="padding:9px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;min-width:200px;outline:none"
           onfocus="this.style.borderColor='var(--green-mid)'" onblur="this.style.borderColor='var(--border)'">
         <button class="btn btn-amber" onclick="showView('liquidaciones')">🧾 Liquidaciones</button>
-        <button class="btn btn-secondary" onclick="openModal('modal-jornada')">＋ Jornada</button>
+        <button class="btn btn-secondary" onclick="_editId=null;_editModule=null;var mt=document.querySelector('#modal-jornada .modal-title');if(mt)mt.textContent='⏱️ Registrar Jornada';openModal('modal-jornada')">＋ Jornada</button>
         <button class="btn btn-primary" onclick="openModal('modal-trabajador')">＋ Trabajador</button>
       </div>
     </div>
@@ -3504,6 +3504,32 @@ function saveJornada(){
     if(mt2) mt2.textContent = '⏱️ Registrar Jornada';
     toast('✅ Jornada actualizada'); renderTrabajadores(); renderLiquidaciones(); return;
   }
+    // EDIT MODE: Update existing jornada
+  if(_editId && _editModule==='jornadas'){
+    var jIdx = (db.jornadas||[]).findIndex(function(x){ return x.id===_editId; });
+    if(jIdx >= 0){
+      db.jornadas[jIdx] = Object.assign(db.jornadas[jIdx], {
+        workerId:wid, fecha:fecha, horas:horas, tarea:tarea, sector:sector,
+        modo:jornadaMode,
+        paltaBins:paltaBins, paltaKg:paltaKg, frutC1:frutC1, frutC2:frutC2, frutKg:frutKg,
+        precioBin:precioBin, precioPaltaKg:precioPaltaKg, precioC1:precioC1, 
+        precioC2:precioC2, precioFrutKg:precioFrutKg, precioHora:precioHora,
+        cargaCant:cargaCant, precioCarga:precioCarga, cargaUnidad:cargaUnidad,
+        pago:total, obs:obs
+      });
+    }
+    _editId=null; _editModule=null;
+    save('jornadas');
+    closeModal('modal-jornada');
+    var mt=document.querySelector('#modal-jornada .modal-title');
+    if(mt) mt.textContent='⏱️ Registrar Jornada';
+    toast('✅ Jornada actualizada — '+fmtMoney(total));
+    renderTrabajadores();
+    renderLiquidaciones();
+    renderDashboard();
+    return;
+  }
+  
   db.jornadas.push({
     id: genId(db.jornadas),
     workerId: wid,
