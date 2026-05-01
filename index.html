@@ -2845,6 +2845,9 @@ KEYS.forEach(k => {
 // Ensure db key is always an array before use
 function ensureArray(k){ if(!db[k] || !Array.isArray(db[k])){ db[k]=[]; try{ var s=_store.get('agt2_'+k); if(s) db[k]=JSON.parse(s); }catch(e){} } return db[k]; }
 
+function envEdit(id){ openEdit('envases', id); }
+function envDel(id){ del('envases', id, renderEnvases); }
+
 function save(k){ 
   // ALWAYS save to localStorage for instant persistence (survives reload)
   try { _store.set('agt2_'+k, JSON.stringify(db[k])); } catch(e){}
@@ -6190,7 +6193,10 @@ function renderEnvases(){
       '<td style="font-size:.78rem">'+(cos?cos.tipo+' '+fmtDate(cos.fecha):'—')+'</td>' +
       '<td><span class="mono">'+fmtDate(e.fecha)+'</span></td>' +
       '<td style="font-size:.78rem;color:var(--text-muted)">'+(e.notas||'—')+'</td>' +
-      '<td style="white-space:nowrap"><button class="btn btn-secondary btn-sm env-edit-btn" data-id="'+e.id+'" style="margin-right:3px">✏️</button><button class="btn btn-danger btn-sm env-del-btn" data-id="'+e.id+'">🗑</button></td>' +
+      '<td style="white-space:nowrap">'+
+      '<button class="btn btn-secondary btn-sm" onclick="envEdit('+e.id+')" style="margin-right:3px">✏️</button>'+
+      '<button class="btn btn-danger btn-sm" onclick="envDel('+e.id+')">🗑</button>'+
+      '</td>' +
     '</tr>';
   }).join('') : '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">🧺 Sin movimientos registrados</td></tr>';
 
@@ -6201,11 +6207,7 @@ function renderEnvases(){
     });
   });
   // Edit buttons
-  tbody.querySelectorAll('.env-edit-btn').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      openEdit('envases', parseInt(btn.dataset.id));
-    });
-  });
+  // Edit via onclick on each button
 
   // Balance table per comprador
   var balanceEl = document.getElementById('tabla-balance-envases');
