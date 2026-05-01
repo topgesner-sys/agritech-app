@@ -6077,14 +6077,14 @@ function renderCompradoresList(){
 }
 
 function saveEnvase(){
-  var compId = parseInt(document.getElementById('env-comprador').value);
-  var tipo = document.getElementById('env-tipo').value;
-  var mov = document.getElementById('env-movimiento').value;
-  var cant = parseInt(document.getElementById('env-cantidad').value) || 0;
-  var fecha = document.getElementById('env-fecha').value;
-  var notas = document.getElementById('env-notas') ? document.getElementById('env-notas').value : '';
+  var compId = parseInt(document.getElementById('env-comprador').value) || 0;
+  var tipo   = document.getElementById('env-tipo') ? document.getElementById('env-tipo').value : '';
+  var mov    = document.getElementById('env-movimiento') ? document.getElementById('env-movimiento').value : '';
+  var cant   = parseFloat(document.getElementById('env-cantidad').value) || 0;
+  var fecha  = document.getElementById('env-fecha') ? document.getElementById('env-fecha').value : '';
+  var notas  = document.getElementById('env-notas') ? document.getElementById('env-notas').value : '';
+  var cosId  = parseInt((document.getElementById('env-cosecha')||{value:0}).value) || 0;
 
-  // EDIT MODE
   if(_editId && _editModule==='envases'){
     var idx2 = (db.envases||[]).findIndex(function(x){ return x.id===_editId; });
     if(idx2 >= 0){
@@ -6097,46 +6097,29 @@ function saveEnvase(){
     }
     _editId = null; _editModule = null;
     save('envases'); closeModal('modal-envase');
-    // Reset modal title
-    var mt = document.querySelector('#modal-envase .modal-title');
-    if(mt) mt.textContent = '📦 Registrar Movimiento de Envase';
-    toast('✅ Envase actualizado'); renderEnvases(); return;
+    toast('Envase actualizado'); renderEnvases(); return;
   }
 
-  if(!db.compradores.length){ 
-    closeModal('modal-envase'); 
-    openModal('modal-comprador'); 
-    toast('⚠️ Primero registra un comprador'); 
-    return; 
+  if(!db.compradores || !db.compradores.length){
+    closeModal('modal-envase'); openModal('modal-comprador');
+    toast('Primero registra un comprador'); return;
   }
-  if(!compId || !cant || !fecha){ toast('⚠️ Completa comprador, cantidad y fecha'); return; }
-  
-  if(_editId && _editModule==='envases'){
-    var idx2=db.envases.findIndex(function(x){return x.id===_editId;});
-    if(idx2>=0) db.envases[idx2]=Object.assign(db.envases[idx2],{tipo:document.getElementById('env-tipo').value,movimiento:document.getElementById('env-mov').value,cantidad:parseFloat(document.getElementById('env-cant').value)||0,fecha:document.getElementById('env-fecha').value,notas:document.getElementById('env-notas')?document.getElementById('env-notas').value:'',compradorId:parseInt(document.getElementById('env-comprador').value)||0});
-    _editId=null; _editModule=null; save('envases'); closeModal('modal-envase');
-    toast('✅ Envase actualizado'); renderEnvases(); return;
-  }
+  if(!compId){ toast('Selecciona un comprador'); return; }
+  if(!cant || cant <= 0){ toast('Ingresa la cantidad'); return; }
+  if(!fecha){ toast('Selecciona la fecha'); return; }
+
+  if(!db.envases) db.envases = [];
   db.envases.push({
-    id: genId(db.envases),
-    compradorId: compId,
-    tipo: tipo,
-    movimiento: mov,
-    cantidad: cant,
-    cosechaId: parseInt(document.getElementById('env-cosecha').value) || 0,
-    fecha: fecha,
-    notas: document.getElementById('env-notas').value
+    id: genId(db.envases), compradorId: compId, tipo: tipo,
+    movimiento: mov, cantidad: cant, cosechaId: cosId, fecha: fecha, notas: notas
   });
-  save('envases');
-  closeModal('modal-envase');
-  ['env-cantidad','env-notas'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
-  
-  var comp = db.compradores.find(function(c){ return c.id === compId; });
-  var movLabel = mov === 'entrada' ? 'Entrada de vacíos' : mov === 'salida' ? 'Despacho de llenos' : 'Devolución';
-  toast('✅ '+movLabel+' registrado — '+cant+' '+tipo+'s');
-  addAlerta('info', '🧺 '+movLabel+': '+cant+' '+tipo+'s de '+(comp?comp.nombre:'comprador'));
-  renderEnvases();
-  renderDashboard();
+  save('envases'); closeModal('modal-envase');
+  document.getElementById('env-cantidad').value = '';
+  if(document.getElementById('env-notas')) document.getElementById('env-notas').value = '';
+  var comp = (db.compradores||[]).find(function(c){ return c.id===compId; });
+  var lbl = mov==='entrada'?'Entrada de vacios': mov==='salida'?'Despacho de llenos':'Devolucion';
+  toast('OK - '+lbl+' registrado: '+cant+' '+(tipo||'envases'));
+  renderEnvases(); renderDashboard();
 }
 
 function clearFEnvases(){
