@@ -5832,6 +5832,17 @@ function cuotaEdit(id){
 
 
 // ========== EDITAR JORNADA DESDE LIQUIDACIONES ==========
+function liqDelJornada(id){
+  if(!confirm('¿Eliminar esta jornada? Esta acción no se puede deshacer.')) return;
+  ensureArray('jornadas');
+  db.jornadas = (db.jornadas||[]).filter(function(x){ return x.id !== id; });
+  save('jornadas');
+  toast('🗑️ Jornada eliminada');
+  renderLiquidaciones();
+  renderTrabajadores();
+  renderDashboard();
+}
+
 function liqEditJornada(id){
   // Find the jornada
   ensureArray('jornadas');
@@ -6705,7 +6716,7 @@ function renderLiquidaciones(){
           '<button class="btn btn-sm" style="background:#f0faf4;border:1px solid var(--border);font-size:.7rem;margin-right:4px" onclick="marcarPagado('+j.id+')">✅ Marcar pagado</button>')+
         '</td>'+
         '<td style="white-space:nowrap">'+
-          '<button class="btn btn-secondary btn-sm" onclick="liqEditJornada('+j.id+')" style="touch-action:manipulation">✏️</button>'+
+          '<button class="btn btn-secondary btn-sm" onclick="liqEditJornada('+j.id+')" style="touch-action:manipulation">✏️</button>'+'<button class="btn btn-danger btn-sm" onclick="liqDelJornada('+j.id+')" style="margin-left:3px;touch-action:manipulation">🗑</button>'+
         '</td>'+
       '</tr>';
     }).join('') : '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-muted)">Sin jornadas en este período</td></tr>';
@@ -6730,7 +6741,7 @@ function renderLiquidaciones(){
       '</div>'+
       '<div class="table-wrap">'+
         '<table>'+
-          '<thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Sector</th><th>Pago</th><th>Estado</th><th></th></tr></thead>'+
+          '<thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Sector</th><th>Pago</th><th>Estado</th><th style="width:80px"></th></tr></thead>'+
           '<tbody>'+jornadasRows+'</tbody>'+
           (totalAdel>0 ?
             '<tr style="background:#fff8e1"><td colspan="4" style="padding:8px 12px;color:#92400e;font-weight:600">Adelantos pendientes ('+adelPend.length+')</td>'+
