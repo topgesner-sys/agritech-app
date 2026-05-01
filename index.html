@@ -81,9 +81,9 @@ body{font-family:var(--font-b);background:var(--bg);color:var(--text);min-height
 .notif-badge{position:absolute;top:0;right:0;width:16px;height:16px;background:var(--red-soft);border-radius:50%;font-size:.6rem;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
 
 /* BUTTONS */
-.btn{padding:9px 16px;border-radius:8px;border:none;font-family:var(--font-b);font-size:.83rem;font-weight:600;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:6px}
+.btn{padding:9px 16px;border-radius:8px;border:none;font-family:var(--font-b);font-size:.83rem;font-weight:600;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;gap:6px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .btn-primary{background:var(--green-mid);color:#fff}
-.btn-primary:hover{background:var(--green-deep);transform:translateY(-1px);box-shadow:0 4px 12px rgba(45,106,79,.3)}
+.btn-primary:hover{background:var(--green-deep);box-shadow:0 4px 12px rgba(45,106,79,.3)}
 .btn-secondary{background:var(--cream);color:var(--green-deep);border:1px solid var(--border)}
 .btn-secondary:hover{background:var(--green-pale)}
 .btn-amber{background:var(--amber);color:var(--green-deep)}
@@ -2842,6 +2842,9 @@ KEYS.forEach(k => {
   catch(e){ db[k]=[]; } 
 });
 
+// Ensure db key is always an array before use
+function ensureArray(k){ if(!db[k] || !Array.isArray(db[k])){ db[k]=[]; try{ var s=_store.get('agt2_'+k); if(s) db[k]=JSON.parse(s); }catch(e){} } return db[k]; }
+
 function save(k){ 
   // ALWAYS save to localStorage for instant persistence (survives reload)
   try { _store.set('agt2_'+k, JSON.stringify(db[k])); } catch(e){}
@@ -3015,7 +3018,7 @@ function seed(){
     {id:5,fecha:ago(4),cond:'Nublado',   tmin:9, tmax:18,lluvia:2,  viento:18,obs:''},
   ]; save('clima');
   if(!db.compradores) db.compradores = [];
-  if(!db.envases) db.envases = [];
+  ensureArray('envases');
   if(!db.asistencia) db.asistencia = [];
   if(!db.eventos.length){
     const fut=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];};
@@ -5375,6 +5378,11 @@ function setAsistFechaHoy(){
 }
 
 function abrirNuevaAsistencia(){
+  // Ensure asistencia data is loaded before showing modal
+  if(!Array.isArray(db.asistencia)){
+    db.asistencia = [];
+    try { var stored = _store.get('agt2_asistencia'); if(stored) db.asistencia = JSON.parse(stored); } catch(e){}
+  }
   var fechaEl=document.getElementById('asist-fecha');
   var fecha=(fechaEl&&fechaEl.value)?fechaEl.value:today();
   var mf=document.getElementById('asist-modal-fecha'); if(mf) mf.value=fecha;
@@ -5442,7 +5450,7 @@ function guardarAsistenciaNueva(){
     var nota=document.getElementById('asist-nota-'+w.id);
     return {id:w.id,nombre:w.nombre,rol:w.rol||'—',presente:cb?cb.checked:true,nota:nota?nota.value:''};
   });
-  if(!db.asistencia) db.asistencia=[];
+  ensureArray('asistencia');
   db.asistencia=db.asistencia.filter(function(a){return a.fecha!==fecha;});
   db.asistencia.push({id:genId(db.asistencia),fecha:fecha,tareaGeneral:tg,obsGeneral:og,
     workers:workers,presentes:workers.filter(function(w){return w.presente;}).length,
@@ -6105,7 +6113,7 @@ function saveEnvase(){
   if(!cant || cant <= 0){ toast('Ingresa la cantidad'); return; }
   if(!fecha){ toast('Selecciona la fecha'); return; }
 
-  if(!db.envases) db.envases = [];
+  ensureArray('envases');
   db.envases.push({
     id: genId(db.envases), compradorId: compId, tipo: tipo,
     movimiento: mov, cantidad: cant, cosechaId: cosId, fecha: fecha, notas: notas
