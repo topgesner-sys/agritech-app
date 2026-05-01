@@ -3481,6 +3481,29 @@ function saveJornada(){
     toast('⚠️ Ingresa al menos una cantidad'); return;
   }
 
+    // EDIT MODE
+  if(_editId && _editModule==='jornadas'){
+    var idx2 = (db.jornadas||[]).findIndex(function(x){ return x.id===_editId; });
+    if(idx2 >= 0){
+      var j2 = db.jornadas[idx2];
+      j2.workerId = wid; j2.fecha = fecha; j2.horas = horas;
+      j2.tarea = document.getElementById('j-tarea') ? document.getElementById('j-tarea').value : j2.tarea;
+      j2.sector = document.getElementById('j-sector') ? document.getElementById('j-sector').value : j2.sector;
+      j2.pago = total; j2.modo = jornadaMode;
+      j2.precioBin = pb; j2.paltaBins = paltaBins;
+      j2.precioPaltaKg = ppk; j2.paltaKg = paltaKg;
+      j2.precioC1 = pc1; j2.frutC1 = frutC1;
+      j2.precioC2 = pc2; j2.frutC2 = frutC2;
+      j2.precioFrutKg = pfk; j2.frutKg = frutKg;
+      j2.precioHora = ph;
+      j2.cargaCant = cargaCE; j2.precioCarga = precioCE; j2.cargaUnidad = cargaUE;
+    }
+    _editId = null; _editModule = null;
+    save('jornadas'); closeModal('modal-jornada');
+    var mt2 = document.querySelector('#modal-jornada .modal-title');
+    if(mt2) mt2.textContent = '⏱️ Registrar Jornada';
+    toast('✅ Jornada actualizada'); renderTrabajadores(); renderLiquidaciones(); return;
+  }
   db.jornadas.push({
     id: genId(db.jornadas),
     workerId: wid,
@@ -5781,6 +5804,77 @@ function cuotaEdit(id){
   openModal('modal-cuota');
 }
 
+
+// ========== EDITAR JORNADA DESDE LIQUIDACIONES ==========
+function liqEditJornada(id){
+  // Find the jornada
+  ensureArray('jornadas');
+  var j = (db.jornadas||[]).find(function(x){ return x.id===id; });
+  if(!j){
+    toast('Jornada no encontrada. Reintentando...');
+    setTimeout(function(){ liqEditJornada(id); }, 800);
+    return;
+  }
+  
+  // Set edit state
+  _editId = id;
+  _editModule = 'jornadas';
+  
+  // Populate worker select
+  var wSel = document.getElementById('j-worker');
+  if(wSel){
+    wSel.innerHTML = '<option value="">Seleccionar...</option>' +
+      (db.trabajadores||[]).map(function(w){
+        return '<option value="'+w.id+'"'+(w.id===j.workerId?' selected':'')+'>'+w.nombre+'</option>';
+      }).join('');
+  }
+  
+  // Fill fields
+  var s = function(eid,v){ var el=document.getElementById(eid); if(el) el.value=v||''; };
+  s('j-fecha', j.fecha);
+  s('j-sector', j.sector);
+  s('j-obs', j.obs||'');
+  s('j-horas', j.horas||0);
+  
+  // Set tarea
+  var tareaEl = document.getElementById('j-tarea');
+  if(tareaEl) tareaEl.value = j.tarea||'Cosecha';
+  
+  // Set modalidad
+  if(j.modo && document.getElementById('j-mode-'+j.modo)){
+    setJornadaMode(j.modo);
+  }
+  
+  // Fill prices
+  s('j-precio-bin', j.precioBin||0);
+  s('j-precio-palta-kg', j.precioPaltaKg||0);
+  s('j-precio-c1', j.precioC1||0);
+  s('j-precio-c2', j.precioC2||0);
+  s('j-precio-frut-kg', j.precioFrutKg||0);
+  s('j-precio-hora', j.precioHora||0);
+  s('j-carga-cant', j.cargaCant||0);
+  s('j-precio-carga', j.precioCarga||0);
+  if(document.getElementById('j-carga-unidad') && j.cargaUnidad) 
+    document.getElementById('j-carga-unidad').value = j.cargaUnidad;
+  
+  // Fill quantities
+  s('j-palta-bins', j.paltaBins||0);
+  s('j-palta-kg', j.paltaKg||0);
+  s('j-frut-c1', j.frutC1||0);
+  s('j-frut-c2', j.frutC2||0);
+  s('j-frut-kg', j.frutKg||0);
+  
+  // Update title
+  var mt = document.querySelector('#modal-jornada .modal-title');
+  if(mt) mt.textContent = '✏️ Editar Jornada';
+  
+  // Show modal
+  openModal('modal-jornada');
+  
+  // Recalculate total after short delay
+  setTimeout(calcJornal, 100);
+}
+
 // ========== AUTH & MULTI-USER SYSTEM ==========
 var _fundoId = null;  // The shared fundo ID (admin's UID)
 var _isAdmin = false; // Is current user the admin?
@@ -6580,7 +6674,13 @@ function renderLiquidaciones(){
         '<td style="font-size:.78rem">'+detalle+'</td>'+
         '<td>'+(j.sector||'—')+'</td>'+
         '<td><span class="mono" style="font-weight:700;color:var(--green-deep)">'+fmtMoney(j.pago||0)+'</span></td>'+
-        '<td>'+pagadoBtn+'</td>'+
+        '<td style="white-space:nowrap">'+
+          (j.pagado ? '<span class="badge badge-green">✅ Pagado</span>' :
+          '<button class="btn btn-sm" style="background:#f0faf4;border:1px solid var(--border);font-size:.7rem;margin-right:4px" onclick="marcarPagado('+j.id+')">✅ Marcar pagado</button>')+
+        '</td>'+
+        '<td style="white-space:nowrap">'+
+          '<button class="btn btn-secondary btn-sm" onclick="liqEditJornada('+j.id+')" style="touch-action:manipulation">✏️</button>'+
+        '</td>'+
       '</tr>';
     }).join('') : '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-muted)">Sin jornadas en este período</td></tr>';
 
@@ -6604,7 +6704,7 @@ function renderLiquidaciones(){
       '</div>'+
       '<div class="table-wrap">'+
         '<table>'+
-          '<thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Sector</th><th>Pago</th><th>Estado</th></tr></thead>'+
+          '<thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Sector</th><th>Pago</th><th>Estado</th><th></th></tr></thead>'+
           '<tbody>'+jornadasRows+'</tbody>'+
           (totalAdel>0 ?
             '<tr style="background:#fff8e1"><td colspan="4" style="padding:8px 12px;color:#92400e;font-weight:600">Adelantos pendientes ('+adelPend.length+')</td>'+
