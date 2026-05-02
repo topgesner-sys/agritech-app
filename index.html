@@ -3955,11 +3955,20 @@ function renderInventario(){
 
 // ========== TRABAJADORES ==========
 function updateWorkerSelects(){
-  const opts='<option value="">Sin asignar</option>'+db.trabajadores.map(w=>`<option value="${w.id}">${w.nombre}</option>`).join('');
-  ['j-worker','ev-resp'].forEach(id=>{ const el=document.getElementById(id); if(el){ const v=el.value; el.innerHTML=(id==='j-worker'?'<option value="">Seleccionar...</option>':opts.replace('<option value="">Sin asignar</option>','<option value="">Sin asignar</option>'))+db.trabajadores.map(w=>`<option value="${w.id}">${w.nombre}</option>`).join(''); if(v) el.value=v; }});
-  document.getElementById('j-worker').innerHTML='<option value="">Seleccionar...</option>'+db.trabajadores.map(w=>`<option value="${w.id}">${w.nombre}</option>`).join('');
-  document.getElementById('ev-resp').innerHTML='<option value="">Sin asignar</option>'+db.trabajadores.map(w=>`<option value="${w.id}">${w.nombre}</option>`).join('');
-  // Populate liq-worker select preserving current selection
+  var workerOpts = '<option value="">Seleccionar...</option>' +
+    db.trabajadores.map(function(w){ return '<option value="'+w.id+'">'+w.nombre+'</option>'; }).join('');
+  var respOpts = '<option value="">Sin asignar</option>' +
+    db.trabajadores.map(function(w){ return '<option value="'+w.id+'">'+w.nombre+'</option>'; }).join('');
+  
+  // j-worker: preserve current value
+  var jw = document.getElementById('j-worker');
+  if(jw){ var v = jw.value; jw.innerHTML = workerOpts; if(v) jw.value = v; }
+  
+  // ev-resp: preserve current value  
+  var er = document.getElementById('ev-resp');
+  if(er){ var v2 = er.value; er.innerHTML = respOpts; if(v2) er.value = v2; }
+  
+  // liq-worker: preserve current selection
   var liqEl = document.getElementById('liq-worker');
   if(liqEl){
     var curVal = liqEl.value;
