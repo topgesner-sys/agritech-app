@@ -1694,11 +1694,11 @@ textarea{resize:vertical;min-height:72px}
     <div class="form-group full"><label>Notas</label><textarea id="j-obs" placeholder="Observaciones..."></textarea></div>
   </div>
   <div class="form-actions">
-    <button class="btn btn-secondary" onclick="closeModal('modal-jornada')">Cancelar</button>
+    <button class="btn btn-secondary" onclick="closeModal('modal-jornada')" style="touch-action:manipulation">Cancelar</button>
     <button class="btn btn-primary" onclick="saveJornada()">💾 Guardar</button>
   </div>
 </div>
-</div>
+
 
 <!-- COSTO -->
 <div class="modal-backdrop" id="modal-costo">
@@ -2757,6 +2757,8 @@ function loadFromCloud(){
         if(loadedCount >= totalKeys){
           showSyncStatus('🔴 En vivo', '#52b788');
           renderDashboard();
+          // Auto-check if local data matches Firebase
+          checkAndAutoRecover();
           // Refresh whatever view is currently active
           var activeView2 = document.querySelector('.view.active');
           if(activeView2){
@@ -7910,6 +7912,66 @@ function clearFComp(){
 }
 
 // ========== INIT ==========
+// ===== RECOVERY MODE: Forces fresh load from Firebase =====
+// If user has fewer items locally than Firebase, ALWAYS restore from Firebase
+function forceRecoverFromFirebase(){
+  if(!_syncEnabled || !_fundoId) return;
+  console.log('[Recovery] Starting full data recovery from Firebase...');
+  var totalKeys = 0;
+  var recoveredKeys = 0;
+  KEYS.forEach(function(key){
+    totalKeys++;
+    _db.collection('fundos').doc(_fundoId).collection(key).doc('data').get()
+      .then(function(doc){
+        if(doc.exists && doc.data() && doc.data().items){
+          var firebaseItems = doc.data().items;
+          var localItems = db[key] || [];
+          // ALWAYS use Firebase data if it has MORE OR EQUAL items
+          if(firebaseItems.length >= localItems.length){
+            db[key] = firebaseItems;
+            try { _store.set('agt2_'+key, JSON.stringify(firebaseItems)); } catch(e){}
+            try { sessionStorage.setItem('agt2_bak_'+key, JSON.stringify(firebaseItems)); } catch(e){}
+            console.log('[Recovery]', key, ':', localItems.length, '->', firebaseItems.length, 'items restored');
+          }
+        }
+        recoveredKeys++;
+        if(recoveredKeys >= totalKeys){
+          console.log('[Recovery] Complete! Refreshing views...');
+          toast('✅ Datos recuperados de la nube');
+          renderDashboard();
+          var activeView = document.querySelector('.view.active');
+          if(activeView){
+            var vid = activeView.id.replace('view-','');
+            if(typeof renderTrabajadores !== 'undefined' && vid === 'trabajadores') renderTrabajadores();
+            if(typeof renderCosechas !== 'undefined' && vid === 'cosechas') renderCosechas();
+            if(typeof renderLiquidaciones !== 'undefined' && vid === 'liquidaciones') renderLiquidaciones();
+          }
+        }
+      })
+      .catch(function(e){ recoveredKeys++; console.warn('[Recovery] Error for', key, e.message); });
+  });
+}
+
+// AUTO-RECOVERY: On startup, if local data seems incomplete, recover from Firebase
+function checkAndAutoRecover(){
+  setTimeout(function(){
+    if(!_syncEnabled || !_fundoId) return;
+    var localTrabajadores = (db.trabajadores||[]).length;
+    var localJornadas = (db.jornadas||[]).length;
+    // If we have very few trabajadores (suspiciously low), trigger recovery
+    _db.collection('fundos').doc(_fundoId).collection('trabajadores').doc('data').get()
+      .then(function(doc){
+        if(doc.exists && doc.data() && doc.data().items){
+          var firebaseCount = doc.data().items.length;
+          if(firebaseCount > localTrabajadores){
+            console.log('[AutoRecover] Firebase has', firebaseCount, 'trabajadores, local has', localTrabajadores, '- recovering...');
+            forceRecoverFromFirebase();
+          }
+        }
+      }).catch(function(){});
+  }, 3000); // Wait 3 seconds for Firebase to connect first
+}
+
 function checkVersion(){
   var ver = document.querySelector('.logo-ver');
   if(ver) ver.style.color = '#52b788';
