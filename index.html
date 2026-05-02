@@ -2715,11 +2715,23 @@ function loadFromCloud(){
             try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
             refreshCurrentView(key);
           } else if(newItems.length > localItems.length){
-            // Firebase has MORE items = new records from another device
-            // But only if we haven't just saved locally (avoid overwrite race)
+            // Firebase has MORE items - but filter out any deleted IDs
             if(!_saveLock[key] || Date.now() > _saveLock[key]){
-              db[key] = newItems;
-              try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
+              // Remove any items that were locally deleted
+              var deletedForKey = _deletedIds[key] || {};
+              var filteredItems = newItems.filter(function(item){
+                return !deletedForKey[item.id];
+              });
+              if(filteredItems.length !== newItems.length){
+                // Some items were filtered (deleted locally) - re-sync to Firebase
+                console.log('[DataGuard] Filtered', newItems.length - filteredItems.length, 'deleted items for', key);
+                db[key] = filteredItems;
+                try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
+                syncToCloud(key); // Re-push without deleted items
+              } else {
+                db[key] = newItems;
+                try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
+              }
               refreshCurrentView(key);
             } else {
               console.log('[DataGuard] Save lock active for', key, '- skipping Firebase overwrite');
@@ -2943,13 +2955,18 @@ function envEdit(id){
 }
 function envDel(id){
   if(!confirm('¿Eliminar este movimiento de envase?')) return;
+  if(!_deletedIds['envases']) _deletedIds['envases'] = {};
+  _deletedIds['envases'][id] = Date.now();
+  _saveLock['envases'] = Date.now() + 30000;
   db.envases = (db.envases||[]).filter(function(x){ return x.id!==id; });
   save('envases');
+  if(typeof _syncEnabled !== 'undefined' && _syncEnabled && _fundoId){ clearTimeout(window['_syncTimer_envases']); syncToCloud('envases'); }
   toast('Eliminado');
   renderEnvases();
 }
 
 var _saveLock = {};
+var _deletedIds = {};
 
 function save(k){ 
   var data = JSON.stringify(db[k]);
@@ -3670,8 +3687,19 @@ function del(key, id, refresh){
         _undoStack.push({ key: key, item: JSON.parse(JSON.stringify(item)), refresh: refresh });
         if(_undoStack.length > 20) _undoStack.shift();
       }
+      // Record deletion permanently so Firebase can't restore it
+      if(!_deletedIds[key]) _deletedIds[key] = {};
+      _deletedIds[key][id] = Date.now();
+      // Extend save lock for 30 seconds (gives Firebase time to sync)
+      _saveLock[key] = Date.now() + 30000;
+      
       db[key] = db[key].filter(x => x.id !== id);
       save(key);
+      // Sync to Firebase IMMEDIATELY (don't wait 1 second debounce)
+      if(typeof _syncEnabled !== 'undefined' && _syncEnabled && _fundoId){
+        clearTimeout(window['_syncTimer_'+key]);
+        syncToCloud(key);
+      }
       refresh();
       toastUndo('🗑️ Eliminado — ');
     });
@@ -5855,8 +5883,12 @@ function cuotaEdit(id){
 function liqDelJornada(id){
   if(!confirm('¿Eliminar esta jornada? Esta acción no se puede deshacer.')) return;
   ensureArray('jornadas');
+  if(!_deletedIds['jornadas']) _deletedIds['jornadas'] = {};
+  _deletedIds['jornadas'][id] = Date.now();
+  _saveLock['jornadas'] = Date.now() + 30000;
   db.jornadas = (db.jornadas||[]).filter(function(x){ return x.id !== id; });
   save('jornadas');
+  if(_syncEnabled && _fundoId){ clearTimeout(window['_syncTimer_jornadas']); syncToCloud('jornadas'); }
   toast('🗑️ Jornada eliminada');
   renderLiquidaciones();
   renderTrabajadores();
