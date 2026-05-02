@@ -417,7 +417,7 @@ textarea{resize:vertical;min-height:72px}
     <div class="logo-mark">🌿</div>
     <div class="logo-name">AgriTech</div>
     <div class="logo-sub">Gestión Agrícola</div>
-    <div class="logo-ver">v2.7 — Sync Definitivo</div>
+    <div class="logo-ver">v2.8 — Sin Parpadeo</div>
   </div>
   <nav class="sidebar-nav">
     <span class="nav-label">Principal</span>
@@ -2689,47 +2689,55 @@ var _listeners = [];
 
 function loadFromCloud(){
   if(!_fundoId) return;
-  showSyncStatus('⏳ Conectando...', '#3b82f6');
-
-  // Unsubscribe existing listeners first
-  _listeners.forEach(function(unsub){ try{ unsub(); }catch(e){} });
-  _listeners = [];
-
+  showSyncStatus('\uD83D\uDD04 Cargando...', '#e9a84c');
+  
   var loadedCount = 0;
   var totalKeys = KEYS.length;
-
+  
+  // Track active listeners to avoid duplicates
+  if(!window._firebaseListeners) window._firebaseListeners = {};
+  
   KEYS.forEach(function(key){
+    // If listener already exists for this key, unsubscribe first
+    if(window._firebaseListeners[key]){
+      try{ window._firebaseListeners[key](); }catch(e){}
+      window._firebaseListeners[key] = null;
+    }
+    
     try {
       var ref = _db.collection('fundos').doc(_fundoId).collection(key).doc('data');
       
-      // Use onSnapshot for real-time updates
-      var unsub = ref.onSnapshot(function(doc){
+      window._firebaseListeners[key] = ref.onSnapshot(function(doc){
         if(doc.exists && doc.data() && doc.data().items){
           var firebaseItems = doc.data().items;
           
-          // Filter permanently deleted IDs from Firebase data
+          // ALWAYS filter permanently deleted IDs
           var deletedForKey = _deletedIds[key] || {};
           var filtered = firebaseItems.filter(function(item){
             return !deletedForKey[item.id];
           });
           
-          // If lock active: we just saved/deleted - our local data is fresh
-          // Push to Firebase only if Firebase doesn't match our local
+          // If filtered items !== firebase items, push correction to Firebase
+          if(filtered.length < firebaseItems.length){
+            clearTimeout(window['_syncTimer_'+key]);
+            window['_syncTimer_'+key] = setTimeout(function(){ syncToCloud(key); }, 1000);
+          }
+          
+          // If lock active: we just saved, trust local data
           if(_saveLock[key] && Date.now() < _saveLock[key]){
-            var localStr = JSON.stringify(db[key] || []);
-            var filteredStr = JSON.stringify(filtered);
-            if(localStr !== filteredStr){
-              // Firebase doesn't have our latest - push it
-              clearTimeout(window['_syncTimer_'+key]);
-              window['_syncTimer_'+key] = setTimeout(function(){ syncToCloud(key); }, 500);
-            }
+            // Don't overwrite local with Firebase
           } else {
-            // Lock expired: accept Firebase data as truth
-            if(filtered.length !== (db[key]||[]).length || 
-               JSON.stringify(filtered) !== JSON.stringify(db[key]||[])){
+            // Lock expired: check if data actually changed before updating
+            var currentStr = JSON.stringify(db[key] || []);
+            var newStr = JSON.stringify(filtered);
+            if(currentStr !== newStr){
               db[key] = filtered;
-              try { _store.set('agt2_'+key, JSON.stringify(filtered)); } catch(e){}
-              refreshCurrentView(key);
+              try { _store.set('agt2_'+key, newStr); } catch(e){}
+              // Debounce the view refresh to prevent flickering
+              clearTimeout(window['_refreshTimer_'+key]);
+              window['_refreshTimer_'+key] = setTimeout(function(){
+                refreshCurrentView(key);
+              }, 200);
             }
           }
           
@@ -2761,13 +2769,12 @@ function loadFromCloud(){
           }
         }
       }, function(err){
-        console.warn('Listener error for', key, err.message);
+        console.error('Listener error for', key, err.message);
         loadedCount++;
       });
       
-      _listeners.push(unsub);
-    } catch(e){ 
-      console.warn('Load error for', key, e.message);
+    } catch(e){
+      console.error('Setup listener error for', key, e.message);
       loadedCount++;
     }
   });
