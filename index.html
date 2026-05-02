@@ -1698,6 +1698,7 @@ textarea{resize:vertical;min-height:72px}
     <button class="btn btn-primary" onclick="saveJornada()">💾 Guardar</button>
   </div>
 </div>
+</div>
 
 
 <!-- COSTO -->
@@ -5866,8 +5867,7 @@ function liqEditJornada(id){
   ensureArray('jornadas');
   var j = (db.jornadas||[]).find(function(x){ return x.id===id; });
   if(!j){
-    toast('Jornada no encontrada. Reintentando...');
-    setTimeout(function(){ liqEditJornada(id); }, 800);
+    toast('⚠️ Jornada no encontrada. Recarga la página.');
     return;
   }
   
@@ -7595,7 +7595,7 @@ function openEdit(module, id){
   if(module==='cosechas'){
     ensureArray('cosechas');
     var item=(db.cosechas||[]).find(function(x){return x.id===id;});
-    if(!item){ toast('Cargando... reintentando'); setTimeout(function(){ openEdit('cosechas',id); }, 800); return; } _editId=id; _editModule='cosechas';
+    if(!item){ toast('⚠️ Dato no encontrado. Recarga la página e intenta de nuevo.'); return; } _editId=id; _editModule='cosechas';
     var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
     s('c-tipo',item.tipo); s('c-fecha',item.fecha); s('c-kg',item.kg||0);
     s('c-sector',item.sector); s('c-bins',item.bins||0); s('c-c1',item.c1||0);
@@ -7606,7 +7606,7 @@ function openEdit(module, id){
   if(module==='insumos'){
     ensureArray('insumos');
     var item=(db.insumos||[]).find(function(x){return x.id===id;});
-    if(!item){ toast('Cargando... reintentando'); setTimeout(function(){ openEdit('insumos',id); }, 800); return; } _editId=id; _editModule='insumos';
+    if(!item){ toast('⚠️ Dato no encontrado. Recarga la página e intenta de nuevo.'); return; } _editId=id; _editModule='insumos';
     var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
     s('i-nom',item.nombre); s('i-tipo',item.tipo); s('i-cant',item.cantidad);
     s('i-unidad',item.unidad); s('i-fecha',item.fecha); s('i-costo',item.costo||0); s('i-obs',item.obs);
@@ -7615,7 +7615,7 @@ function openEdit(module, id){
   if(module==='inventario'){
     ensureArray('inventario');
     var item=(db.inventario||[]).find(function(x){return x.id===id;});
-    if(!item){ toast('Cargando... reintentando'); setTimeout(function(){ openEdit('inventario',id); }, 800); return; } _editId=id; _editModule='inventario';
+    if(!item){ toast('⚠️ Dato no encontrado. Recarga la página e intenta de nuevo.'); return; } _editId=id; _editModule='inventario';
     var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
     s('inv-nom',item.nombre); s('inv-cat',item.cat); s('inv-cant',item.cantidad);
     s('inv-min',item.minimo||0); s('inv-unidad',item.unidad); s('inv-fecha',item.fecha); s('inv-prov',item.proveedor);
@@ -7626,9 +7626,7 @@ function openEdit(module, id){
     ensureArray('costos');
     var item=(db.costos||[]).find(function(x){return x.id===id;});
     if(!item){
-      toast('Cargando datos... intentando de nuevo');
-      setTimeout(function(){ openEdit('costos',id); }, 800);
-      return;
+      toast('⚠️ Dato no encontrado. Recarga la página.'); return;
     }
     _editId=id; _editModule='costos';
     var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
@@ -7654,7 +7652,7 @@ function openEdit(module, id){
   if(module==='clima'){
     ensureArray('clima');
     var item=(db.clima||[]).find(function(x){return x.id===id;});
-    if(!item){ toast('Cargando... reintentando'); setTimeout(function(){ openEdit('clima',id); }, 800); return; } _editId=id; _editModule='clima';
+    if(!item){ toast('⚠️ Dato no encontrado. Recarga la página e intenta de nuevo.'); return; } _editId=id; _editModule='clima';
     var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
     s('cl-fecha',item.fecha); s('cl-cond',item.cond); s('cl-tmin',item.tmin); s('cl-tmax',item.tmax);
     s('cl-lluvia',item.lluvia||0); s('cl-viento',item.viento||0); s('cl-obs',item.obs);
