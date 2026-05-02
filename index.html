@@ -2781,9 +2781,25 @@ function loadFromCloud(){
               refreshCurrentView(key);
             }
           } else if(newItems.length < localItems.length){
-            // Firebase has FEWER items = local has newer data, push it up
-            console.log('[DataGuard] Local has more items for', key, '- syncing local to Firebase');
-            syncToCloud(key);
+            // Firebase has FEWER items = someone deleted on another device
+            // Accept Firebase's deletion UNLESS we have a save lock (we just saved locally)
+            if(_saveLock[key] && Date.now() < _saveLock[key]){
+              // We just saved - our local is authoritative, push it up
+              console.log('[DataGuard] Save lock active - keeping local data for', key);
+              syncToCloud(key);
+            } else {
+              // Accept the deletion from Firebase
+              // But filter out any items we've deleted locally too
+              var deletedCheck2 = _deletedIds[key] || {};
+              var acceptedItems = newItems.filter(function(item){
+                return !deletedCheck2[item.id];
+              });
+              console.log('[DataGuard] Accepting Firebase deletion for', key, ':', localItems.length, '->', acceptedItems.length, 'items');
+              db[key] = acceptedItems;
+              try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
+              try { sessionStorage.setItem('agt2_bak_'+key, JSON.stringify(db[key])); } catch(e){}
+              refreshCurrentView(key);
+            }
           } else {
             // Same data - just refresh view
             refreshCurrentView(key);
