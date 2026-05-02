@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script>
+// Force unregister any service worker and clear cache on every load
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    regs.forEach(function(r){ r.unregister(); });
+  });
+}
+if('caches' in window){
+  caches.keys().then(function(keys){
+    keys.forEach(function(k){ caches.delete(k); });
+  });
+}
+</script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
@@ -417,7 +430,7 @@ textarea{resize:vertical;min-height:72px}
     <div class="logo-mark">🌿</div>
     <div class="logo-name">AgriTech</div>
     <div class="logo-sub">Gestión Agrícola</div>
-    <div class="logo-ver">v2.8 — Sin Parpadeo</div>
+    <div class="logo-ver">v2.9 — SW Eliminado</div>
   </div>
   <nav class="sidebar-nav">
     <span class="nav-label">Principal</span>

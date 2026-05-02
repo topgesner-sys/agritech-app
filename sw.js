@@ -1,41 +1,27 @@
-// AgriTech Service Worker v5 - Smart Update Handler
-const CACHE = 'agritech-v9';
-const ASSETS = ['/', '/index.html'];
-
+// AgriTech Service Worker v10 - SELF DESTRUCT
+// This version unregisters itself to force fresh page loads
 self.addEventListener('install', function(e){
   self.skipWaiting();
-  e.waitUntil(
-    caches.open(CACHE).then(function(cache){
-      return cache.addAll(ASSETS).catch(function(){});
-    })
-  );
 });
 
 self.addEventListener('activate', function(e){
   e.waitUntil(
+    // Clear ALL caches
     caches.keys().then(function(keys){
-      return Promise.all(keys.filter(function(k){ return k !== CACHE; }).map(function(k){ return caches.delete(k); }));
+      return Promise.all(keys.map(function(key){ return caches.delete(key); }));
+    }).then(function(){
+      // Unregister this service worker
+      return self.registration.unregister();
+    }).then(function(){
+      // Force all clients to reload
+      return self.clients.matchAll({ type: 'window' });
+    }).then(function(clients){
+      clients.forEach(function(client){ client.navigate(client.url); });
     })
   );
-  self.clients.claim();
-  // Notify all clients that app was updated
-  self.clients.matchAll().then(function(clients){
-    clients.forEach(function(client){
-      client.postMessage({ type: 'APP_UPDATED' });
-    });
-  });
 });
 
-// Network first, cache fallback
+// Pass all requests through without caching
 self.addEventListener('fetch', function(e){
-  if(e.request.method !== 'GET') return;
-  e.respondWith(
-    fetch(e.request).then(function(response){
-      var clone = response.clone();
-      caches.open(CACHE).then(function(cache){ cache.put(e.request, clone); });
-      return response;
-    }).catch(function(){
-      return caches.match(e.request);
-    })
-  );
+  e.respondWith(fetch(e.request));
 });
