@@ -2709,113 +2709,33 @@ function loadFromCloud(){
       // Use onSnapshot for real-time updates
       var unsub = ref.onSnapshot(function(doc){
         if(doc.exists && doc.data() && doc.data().items){
-          var newItems = doc.data().items;
+          var firebaseItems = doc.data().items;
           var localItems = db[key] || [];
-          // SAFETY: Never overwrite local data with empty Firebase data
-          // This prevents data loss if Firebase hasn't synced yet
-          if(newItems.length === 0 && localItems.length > 0){
-            // Firebase is empty but we have local data - push local UP to Firebase
-            console.log('Safety: pushing local data to Firebase for', key, localItems.length, 'items');
-            syncToCloud(key);
-            // fall through to loadedCount++ below
-          }
-          var newStr = JSON.stringify(newItems);
-          var localStr = JSON.stringify(localItems);
-          
-          if(localItems.length === 0){
-            // Local is empty (new device/cleared cache) - use Firebase data
-            db[key] = newItems;
-            try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
-            refreshCurrentView(key);
-          } else if(newItems.length > localItems.length){
-            // Firebase has MORE items - filter deleted items first
-            // ALWAYS filter deleted IDs regardless of save lock
-            var deletedCheck = _deletedIds[key] || {};
-            var preFiltered = newItems.filter(function(item){ return !deletedCheck[item.id]; });
-            if(preFiltered.length < newItems.length){
-              // Some items in Firebase were deleted locally - force resync
-              db[key] = preFiltered;
-              try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
-              _saveLock[key] = Date.now() + 30000;
+
+          // If we just saved/deleted locally (saveLock active), trust local
+          if(_saveLock[key] && Date.now() < _saveLock[key]){
+            // Our local data is fresher - push it to Firebase if different
+            if(JSON.stringify(firebaseItems) !== JSON.stringify(localItems)){
               syncToCloud(key);
-              refreshCurrentView(key);
-            } else if(!_saveLock[key] || Date.now() > _saveLock[key]){
-              // Remove any items that were locally deleted
-              var deletedForKey = _deletedIds[key] || {};
-              var filteredItems = newItems.filter(function(item){
-                return !deletedForKey[item.id];
-              });
-              if(filteredItems.length !== newItems.length){
-                // Some items were filtered (deleted locally) - re-sync to Firebase
-                console.log('[DataGuard] Filtered', newItems.length - filteredItems.length, 'deleted items for', key);
-                db[key] = filteredItems;
-                try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
-                syncToCloud(key); // Re-push without deleted items
-              } else {
-                db[key] = newItems;
-                try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
-              }
-              refreshCurrentView(key);
-            } else {
-              console.log('[DataGuard] Save lock active for', key, '- skipping Firebase overwrite');
-            }
-          } else if(newItems.length === localItems.length && newStr !== localStr){
-            // Same count but different content = edit from another device
-            // Skip if we just saved locally
-            if(_saveLock[key] && Date.now() < _saveLock[key]){
-              console.log('[DataGuard] Save lock active for', key, '- skipping merge');
-            } else {
-              var mergedMap = {};
-              var deletedForMerge = _deletedIds[key] || {};
-              localItems.forEach(function(item){ mergedMap[item.id] = item; });
-              newItems.forEach(function(item){
-                // Never restore a deleted item
-                if(deletedForMerge[item.id]) return;
-                if(!mergedMap[item.id] || JSON.stringify(mergedMap[item.id]) !== JSON.stringify(item)){
-                  mergedMap[item.id] = item;
-                }
-              });
-              var merged = Object.values(mergedMap).sort(function(a,b){ return (a.id||0)-(b.id||0); });
-              db[key] = merged;
-              try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
-              refreshCurrentView(key);
-            }
-          } else if(newItems.length < localItems.length){
-            // Firebase has FEWER items = someone deleted on another device
-            // Accept Firebase's deletion UNLESS we have a save lock (we just saved locally)
-            if(_saveLock[key] && Date.now() < _saveLock[key]){
-              // We just saved - our local is authoritative, push it up
-              console.log('[DataGuard] Save lock active - keeping local data for', key);
-              syncToCloud(key);
-            } else {
-              // Accept the deletion from Firebase
-              // But filter out any items we've deleted locally too
-              var deletedCheck2 = _deletedIds[key] || {};
-              var acceptedItems = newItems.filter(function(item){
-                return !deletedCheck2[item.id];
-              });
-              console.log('[DataGuard] Accepting Firebase deletion for', key, ':', localItems.length, '->', acceptedItems.length, 'items');
-              db[key] = acceptedItems;
-              try { _store.set('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
-              try { sessionStorage.setItem('agt2_bak_'+key, JSON.stringify(db[key])); } catch(e){}
-              refreshCurrentView(key);
             }
           } else {
-            // Same data - just refresh view
-            refreshCurrentView(key);
+            // Firebase is the source of truth - accept its data
+            db[key] = firebaseItems;
+            try { _store.set('agt2_'+key, JSON.stringify(firebaseItems)); } catch(e){}
+            try { sessionStorage.setItem('agt2_bak_'+key, JSON.stringify(firebaseItems)); } catch(e){}
           }
+          
+          refreshCurrentView(key);
+          
         } else if(!doc.exists && (db[key]||[]).length > 0){
-          // Doc doesn't exist in Firebase - push local data up
-          console.log('Doc missing in Firebase for', key, '- pushing local data');
+          // Document missing in Firebase - push our local data up
           syncToCloud(key);
         }
+        
         loadedCount++;
         if(loadedCount >= totalKeys){
-          showSyncStatus('🔴 En vivo', '#52b788');
+          showSyncStatus('\uD83D\uDD34 En vivo', '#52b788');
           renderDashboard();
-          // Auto-check if local data matches Firebase
-          checkAndAutoRecover();
-          // Refresh whatever view is currently active
           var activeView2 = document.querySelector('.view.active');
           if(activeView2){
             var vid2 = activeView2.id.replace('view-','');
@@ -2823,15 +2743,16 @@ function loadFromCloud(){
               trabajadores:renderTrabajadores, cosechas:renderCosechas,
               liquidaciones:renderLiquidaciones, costos:renderCostos,
               inventario:renderInventario, insumos:renderInsumos,
-              envases:renderEnvases,compradores:renderCompradoresView, asistencia:function(){ 
+              envases:renderEnvases, compradores:renderCompradoresView,
+              asistencia:function(){ 
                 var el=document.getElementById('asist-fecha'); 
                 if(el&&!el.value) el.value=today(); 
-                renderAsistencia(); renderHistorialAsistencia(); renderHistorialAsistencia(); 
+                renderAsistencia(); renderHistorialAsistencia();
               },
               adelantos:renderAdelantos, facturas:renderFacturas, ventas:renderVentas,
               clima:renderClima, calendario:renderCalendario,
             };
-            if(allRenders[vid2]) try{ allRenders[vid2](); }catch(e){ console.warn('Render error:',e.message); }
+            if(allRenders[vid2]) try{ allRenders[vid2](); }catch(e){}
           }
         }
       }, function(err){
@@ -3014,7 +2935,7 @@ function save(k){
   var data = JSON.stringify(db[k]);
   // Only set lock if not already locked longer (delete sets 30s lock)
   if(!_saveLock[k] || _saveLock[k] < Date.now() + 5000){
-    _saveLock[k] = Date.now() + 5000;
+    _saveLock[k] = Date.now() + 15000; // 15 seconds - Firebase usually syncs in <3s
   }
   // PRIMARY: localStorage (survives reload)
   try { _store.set('agt2_'+k, data); } catch(e){}
@@ -3732,23 +3653,22 @@ function del(key, id, refresh){
         _undoStack.push({ key: key, item: JSON.parse(JSON.stringify(item)), refresh: refresh });
         if(_undoStack.length > 20) _undoStack.shift();
       }
-      // Record deletion permanently so Firebase can't restore it
-      if(!_deletedIds[key]) _deletedIds[key] = {};
-      _deletedIds[key][id] = Date.now();
-      // Extend save lock for 30 seconds (gives Firebase time to sync)
-      _saveLock[key] = Date.now() + 30000;
-      
+      // DELETE: Remove from local array immediately
       db[key] = db[key].filter(x => x.id !== id);
-      save(key);
-      // Re-apply 30s lock AFTER save() (save only sets 5s)
-      _saveLock[key] = Date.now() + 30000;
-      // Sync to Firebase IMMEDIATELY (don't wait 1 second debounce)
-      if(typeof _syncEnabled !== 'undefined' && _syncEnabled && _fundoId){
+      
+      // Set 60 second lock - prevents onSnapshot from restoring the deleted item
+      _saveLock[key] = Date.now() + 60000;
+      
+      // Save to localStorage directly (bypasses save() to avoid lock reset)
+      try { localStorage.setItem('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
+      try { sessionStorage.setItem('agt2_bak_'+key, JSON.stringify(db[key])); } catch(e){}
+      
+      // Sync to Firebase IMMEDIATELY - skip the 1s debounce
+      if(_syncEnabled && _fundoId){
         clearTimeout(window['_syncTimer_'+key]);
         syncToCloud(key);
       }
-      // Re-apply lock again after syncToCloud in case it reset it
-      _saveLock[key] = Date.now() + 30000;
+      
       refresh();
       toastUndo('🗑️ Eliminado — ');
     });
@@ -8028,63 +7948,10 @@ function clearFComp(){
 // ========== INIT ==========
 // ===== RECOVERY MODE: Forces fresh load from Firebase =====
 // If user has fewer items locally than Firebase, ALWAYS restore from Firebase
-function forceRecoverFromFirebase(){
-  if(!_syncEnabled || !_fundoId) return;
-  console.log('[Recovery] Starting full data recovery from Firebase...');
-  var totalKeys = 0;
-  var recoveredKeys = 0;
-  KEYS.forEach(function(key){
-    totalKeys++;
-    _db.collection('fundos').doc(_fundoId).collection(key).doc('data').get()
-      .then(function(doc){
-        if(doc.exists && doc.data() && doc.data().items){
-          var firebaseItems = doc.data().items;
-          var localItems = db[key] || [];
-          // ALWAYS use Firebase data if it has MORE OR EQUAL items
-          if(firebaseItems.length >= localItems.length){
-            db[key] = firebaseItems;
-            try { _store.set('agt2_'+key, JSON.stringify(firebaseItems)); } catch(e){}
-            try { sessionStorage.setItem('agt2_bak_'+key, JSON.stringify(firebaseItems)); } catch(e){}
-            console.log('[Recovery]', key, ':', localItems.length, '->', firebaseItems.length, 'items restored');
-          }
-        }
-        recoveredKeys++;
-        if(recoveredKeys >= totalKeys){
-          console.log('[Recovery] Complete! Refreshing views...');
-          toast('✅ Datos recuperados de la nube');
-          renderDashboard();
-          var activeView = document.querySelector('.view.active');
-          if(activeView){
-            var vid = activeView.id.replace('view-','');
-            if(typeof renderTrabajadores !== 'undefined' && vid === 'trabajadores') renderTrabajadores();
-            if(typeof renderCosechas !== 'undefined' && vid === 'cosechas') renderCosechas();
-            if(typeof renderLiquidaciones !== 'undefined' && vid === 'liquidaciones') renderLiquidaciones();
-          }
-        }
-      })
-      .catch(function(e){ recoveredKeys++; console.warn('[Recovery] Error for', key, e.message); });
-  });
-}
+function forceRecoverFromFirebase(){ console.log("Recovery disabled - use Firebase as truth"); }
 
 // AUTO-RECOVERY: On startup, if local data seems incomplete, recover from Firebase
-function checkAndAutoRecover(){
-  setTimeout(function(){
-    if(!_syncEnabled || !_fundoId) return;
-    var localTrabajadores = (db.trabajadores||[]).length;
-    var localJornadas = (db.jornadas||[]).length;
-    // If we have very few trabajadores (suspiciously low), trigger recovery
-    _db.collection('fundos').doc(_fundoId).collection('trabajadores').doc('data').get()
-      .then(function(doc){
-        if(doc.exists && doc.data() && doc.data().items){
-          var firebaseCount = doc.data().items.length;
-          if(firebaseCount > localTrabajadores){
-            console.log('[AutoRecover] Firebase has', firebaseCount, 'trabajadores, local has', localTrabajadores, '- recovering...');
-            forceRecoverFromFirebase();
-          }
-        }
-      }).catch(function(){});
-  }, 3000); // Wait 3 seconds for Firebase to connect first
-}
+function checkAndAutoRecover(){ /* disabled - was restoring deleted items */ }
 
 function checkVersion(){
   var ver = document.querySelector('.logo-ver');
