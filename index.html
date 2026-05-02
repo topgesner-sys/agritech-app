@@ -2387,6 +2387,7 @@ textarea{resize:vertical;min-height:72px}
     <button class="btn btn-secondary" onclick="closeModal('modal-liq-individual')">Cerrar</button>
     <button class="btn btn-secondary" onclick="exportLiqIndCSV()">📥 Descargar CSV</button>
     <button class="btn btn-secondary" onclick="printLiqIndividual()">🖨️ Imprimir</button>
+    <button class="btn btn-secondary" onclick="autoRegistrarLiquidacionCompleta(_liqIndWorkerId, document.getElementById('liq-ind-d').value, document.getElementById('liq-ind-h').value)" style="margin-right:6px">📊 Registrar en Gastos</button>
     <button class="btn btn-primary" onclick="marcarTodosLiqInd()">✅ Marcar todo pagado</button>
   </div>
 </div>
@@ -4288,9 +4289,21 @@ function renderReportes(){
       <div style="margin-bottom:8px">📋 <strong>${frut.reduce((s,c)=>s+(c.c2||0),0)}</strong> cajas 2da</div>
       <div style="margin-bottom:8px">⚖️ <strong>${frut.reduce((s,c)=>s+c.kg,0).toLocaleString()} kg</strong></div>
     </div>`;
+  var totalVentas = db.ventas ? db.ventas.filter(function(v){return inRange(v.fecha,d,h);}).reduce(function(s,v){return s+(v.monto||0);},0) : 0;
+  var diferencia = totalVentas - totalCost;
+  var totalVentas=(db.ventas||[]).filter(function(v){return inRange(v.fecha,d,h);}).reduce(function(s,v){return s+(v.monto||0);},0);
+  var diferencia=totalVentas-totalCost;
   document.getElementById('rep-cost').innerHTML=`
     <div style="font-size:.85rem">
-      <div style="margin-bottom:8px">💰 Total: <strong>${fmtMoney(totalCost)}</strong></div>
+      <div style="margin-bottom:8px">💰 Gastos: <strong>${fmtMoney(totalCost)}</strong></div>
+      <div style="margin-bottom:8px">📈 Ingresos: <strong>${fmtMoney(totalVentas)}</strong></div>
+      <div style="margin-bottom:8px;padding:8px;background:${diferencia>=0?'#d1fae5':'#fde8e8'};border-radius:8px">
+        ${diferencia>=0?'✅ Ganancia':'⚠️ Déficit'}: <strong style="color:${diferencia>=0?'#065f46':'#991b1b'}">${fmtMoney(Math.abs(diferencia))}</strong>
+      </div>
+      <div style="margin-bottom:8px">📈 Ingresos: <strong>${fmtMoney(totalVentas)}</strong></div>
+      <div style="margin-bottom:8px;padding:6px;background:${diferencia>=0?'#d1fae5':'#fde8e8'};border-radius:6px">
+        ${diferencia>=0?'✅':'⚠️'} Diferencia: <strong style="color:${diferencia>=0?'#065f46':'#991b1b'}">${fmtMoney(diferencia)}</strong>
+      </div>
       ${['Mano de obra','Insumos','Maquinaria','Transporte','Otros'].map(cat=>{
         const v=cts.filter(c=>c.cat===cat).reduce((s,c)=>s+c.monto,0);
         return v>0?`<div style="margin-bottom:5px">${cat}: <strong>${fmtMoney(v)}</strong></div>`:'';
@@ -5980,6 +5993,70 @@ function liqEditJornada(id){
   setTimeout(calcJornal, 100);
 }
 
+
+// ===== AUTO-REGISTRO DE LIQUIDACIONES COMO GASTOS =====
+
+function autoRegistrarGastoJornada(jornada){
+  if(!jornada || !jornada.pago || jornada.pago <= 0) return;
+  
+  // Evitar duplicados: buscar si ya existe un gasto con referencia a esta jornada
+  var refKey = 'jornadaId:' + jornada.id;
+  var yaExiste = (db.costos||[]).find(function(c){ return c.obs && c.obs.indexOf(refKey) >= 0; });
+  if(yaExiste) return; // Ya registrado
+  
+  // Obtener nombre del trabajador
+  var worker = (db.trabajadores||[]).find(function(w){ return w.id === jornada.workerId; });
+  var nombre = worker ? worker.nombre : 'Trabajador';
+  
+  // Crear el gasto
+  if(!db.costos) db.costos = [];
+  db.costos.push({
+    id: genId(db.costos),
+    desc: 'Jornal — ' + nombre + ' (' + fmtDate(jornada.fecha) + ')',
+    cat: 'Mano de obra',
+    monto: jornada.pago,
+    fecha: jornada.fecha,
+    obs: refKey + ' | Auto-registrado al liquidar'
+  });
+  save('costos');
+  console.log('[AutoGasto] Registrado: ' + nombre + ' $' + jornada.pago);
+}
+
+function autoRegistrarLiquidacionCompleta(workerId, fechaDesde, fechaHasta){
+  // Registrar TODAS las jornadas pagadas de un trabajador en un período
+  // como UN SOLO gasto consolidado
+  var jornadas = (db.jornadas||[]).filter(function(j){
+    return j.workerId === workerId && j.pagado && inRange(j.fecha, fechaDesde, fechaHasta);
+  });
+  if(!jornadas.length) return;
+  
+  var worker = (db.trabajadores||[]).find(function(w){ return w.id === workerId; });
+  var nombre = worker ? worker.nombre : 'Trabajador';
+  var total = jornadas.reduce(function(s,j){ return s + (j.pago||0); }, 0);
+  
+  // Evitar duplicado
+  var refKey = 'liq:' + workerId + ':' + fechaDesde + ':' + fechaHasta;
+  var yaExiste = (db.costos||[]).find(function(c){ return c.obs && c.obs.indexOf(refKey) >= 0; });
+  if(yaExiste){
+    // Actualizar el monto si cambió
+    yaExiste.monto = total;
+    save('costos');
+    return;
+  }
+  
+  if(!db.costos) db.costos = [];
+  db.costos.push({
+    id: genId(db.costos),
+    desc: 'Liquidación — ' + nombre + ' (' + fmtDate(fechaDesde) + ' al ' + fmtDate(fechaHasta) + ')',
+    cat: 'Mano de obra',
+    monto: total,
+    fecha: fechaHasta || today(),
+    obs: refKey + ' | ' + jornadas.length + ' jornadas'
+  });
+  save('costos');
+  toast('📊 Liquidación registrada en Gastos: ' + fmtMoney(total));
+}
+
 // ========== AUTH & MULTI-USER SYSTEM ==========
 var _fundoId = null;  // The shared fundo ID (admin's UID)
 var _isAdmin = false; // Is current user the admin?
@@ -6825,6 +6902,15 @@ function renderLiquidaciones(){
             '<td colspan="4" style="padding:12px;font-weight:800;font-size:1rem;color:#1a3325">NETO A PAGAR</td>'+
             '<td colspan="2" style="padding:12px">'+
               '<span class="mono" style="font-weight:800;font-size:1.3rem;color:var(--green-deep)">'+fmtMoney(netoAPagar)+'</span>'+
+              (function(){
+                var refPfx = 'jornadaId:';
+                var gastosIds = new Set(jornadas.filter(function(j){return j.pagado;}).map(function(j){return j.id;}));
+                var yaEnGastos = (db.costos||[]).filter(function(c){
+                  return c.obs && c.obs.indexOf(refPfx) >= 0 && 
+                         gastosIds.has(parseInt(c.obs.split(refPfx)[1]));
+                }).reduce(function(s,c){return s+c.monto;},0);
+                return yaEnGastos > 0 ? '<div style="font-size:.72rem;color:#52b788;margin-top:2px">✅ En gastos: '+fmtMoney(yaEnGastos)+'</div>' : '';
+              })()+
               (totalAdel>0 ? '<div style="font-size:.72rem;color:#6b7c6e">Bruto '+fmtMoney(totalWorker)+' - Adelantos '+fmtMoney(totalAdel)+'</div>' : '')+
             '</td>'+
           '</tr>'+
@@ -6856,7 +6942,13 @@ function renderLiquidaciones(){
 
 function marcarPagado(jornadaId){
   var j = db.jornadas.find(function(x){ return x.id === jornadaId; });
-  if(j){ j.pagado = true; save('jornadas'); renderLiquidaciones(); toast('✅ Jornada marcada como pagada'); }
+  if(!j) return;
+  j.pagado = true;
+  save('jornadas');
+  // Auto-registrar como gasto si no existe ya
+  autoRegistrarGastoJornada(j);
+  renderLiquidaciones();
+  toast('✅ Jornada pagada y registrada en Gastos');
 }
 
 function marcarTodosPagados(workerId, d, h){
@@ -7157,12 +7249,15 @@ function marcarTodosLiqInd(){
   db.jornadas.filter(function(j){ return j.workerId===_liqIndWorkerId && inRange(j.fecha,d,h); })
     .forEach(function(j){ j.pagado=true; });
   save('jornadas');
+  // Auto-registrar jornadas pagadas como gastos
+  db.jornadas.filter(function(j){ return j.workerId===_liqIndWorkerId && inRange(j.fecha,d,h) && j.pagado; })
+    .forEach(function(j){ autoRegistrarGastoJornada(j); });
   // Mark all pending adelantos as descontado
   (db.adelantos||[]).filter(function(a){ return a.workerId===_liqIndWorkerId && !a.descontado; })
     .forEach(function(a){ a.descontado=true; });
   save('adelantos');
   calcLiqIndividual();
-  toast('✅ Liquidación cerrada — jornadas pagadas y adelantos descontados');
+  toast('✅ Liquidación cerrada — jornadas pagadas y registradas en Gastos');
 }
 
 function exportLiqIndCSV(){
