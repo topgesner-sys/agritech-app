@@ -417,7 +417,7 @@ textarea{resize:vertical;min-height:72px}
     <div class="logo-mark">🌿</div>
     <div class="logo-name">AgriTech</div>
     <div class="logo-sub">Gestión Agrícola</div>
-    <div class="logo-ver">v2.5 — Fix Permanente</div>
+    <div class="logo-ver">v2.6 — Auditoría Completa</div>
   </div>
   <nav class="sidebar-nav">
     <span class="nav-label">Principal</span>
@@ -7994,7 +7994,10 @@ function checkVersion(){
 }
 
 function init(){
-  console.log('INIT START v2.1');
+  console.log('AgriTech v2.6 - Auditoría Completa');
+  // Verify deletedIds loaded from localStorage
+  var _loadedDel = Object.values(_deletedIds).reduce(function(t,k){ return t+Object.keys(k).length; }, 0);
+  if(_loadedDel > 0) console.log('[DataGuard] Loaded', _loadedDel, 'permanently deleted IDs from localStorage');
   checkVersion();
 
   // AUTO-FIX UNIVERSAL: Detecta y corrige divs mal anidados por cache vieja
