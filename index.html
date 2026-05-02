@@ -7618,8 +7618,8 @@ function renderVentas(){
   if(tfoot) tfoot.innerHTML='<tr style="background:#1a3325;color:#b7e4c7;font-weight:700"><td colspan="8" style="padding:10px 13px">TOTAL</td><td style="padding:10px 13px;font-family:monospace">'+fmtMoney(totalIng)+'</td><td></td></tr>';
 }
 
-// Extended openEdit for new modules
-var _origOpenEditFn = openEdit;
+// Unified openEdit - handles all modules
+
 function openEdit(module, id){
   if(module==='adelantos'){
     var a=(db.adelantos||[]).find(function(x){return x.id===id;});
@@ -7651,12 +7651,38 @@ function openEdit(module, id){
     if(document.getElementById('vt-comprador')) document.getElementById('vt-comprador').value=v.compradorId;
     calcVenta(); openModal('modal-venta'); return;
   }
-  if(typeof _origOpenEditFn === 'function') _origOpenEditFn(module, id);
-  else if(typeof saveEdit === 'function') {
-    // original openEdit from edit module
-    var item = db[module] ? db[module].find(function(x){return x.id===id;}) : null;
-    if(item){ _editId=id; _editModule=module; }
+
+  if(module==='adelantos'){
+    var a=(db.adelantos||[]).find(function(x){return x.id===id;});
+    if(!a) return;
+    _editId=id; _editModule='adelantos';
+    var wsel=document.getElementById('adel-worker'); if(wsel) wsel.value=a.workerId;
+    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
+    s('adel-fecha',a.fecha); s('adel-monto',a.monto); s('adel-periodo',a.periodo); s('adel-desc',a.desc);
+    openModal('modal-adelanto'); return;
   }
+  if(module==='facturas'){
+    var f=(db.facturas||[]).find(function(x){return x.id===id;});
+    if(!f) return;
+    _editId=id; _editModule='facturas';
+    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
+    s('fact-num',f.numero); s('fact-prov',f.proveedor); s('fact-cliente',f.nCliente);
+    s('fact-venta',f.nVenta); s('fact-desc',f.descripcion); s('fact-neto',f.neto);
+    s('fact-fecha-ing',f.fechaIngreso); s('fact-fecha-venc',f.fechaVencimiento);
+    s('fact-notas',f.notas); s('fact-estado',f.estado);
+    var ti=document.getElementById('modal-factura-title'); if(ti) ti.textContent='✏️ Editar Factura';
+    calcFactura(); openModal('modal-factura'); return;
+  }
+  if(module==='ventas'){
+    var v=(db.ventas||[]).find(function(x){return x.id===id;});
+    if(!v) return;
+    var s=function(eid,val){var el=document.getElementById(eid);if(el)el.value=val||'';};
+    s('vt-fecha',v.fecha); s('vt-cantidad',v.cantidad); s('vt-precio',v.precio);
+    s('vt-env-llenos',v.envLlenos); s('vt-env-vacios',v.envVacios); s('vt-notas',v.notas);
+    if(document.getElementById('vt-comprador')) document.getElementById('vt-comprador').value=v.compradorId;
+    calcVenta(); openModal('modal-venta'); return;
+  }
+
 
   if(module==='cosechas'){
     ensureArray('cosechas');
@@ -7743,6 +7769,7 @@ function openEdit(module, id){
     if(document.getElementById('env-comprador')) document.getElementById('env-comprador').value = item.compradorId || '';
     openModal('modal-envase'); return;
   }
+
 }
 
 
