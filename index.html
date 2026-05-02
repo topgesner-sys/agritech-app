@@ -417,7 +417,7 @@ textarea{resize:vertical;min-height:72px}
     <div class="logo-mark">🌿</div>
     <div class="logo-name">AgriTech</div>
     <div class="logo-sub">Gestión Agrícola</div>
-    <div class="logo-ver">v2.5 — Borrado Definitivo</div>
+    <div class="logo-ver">v2.5 — Fix Permanente</div>
   </div>
   <nav class="sidebar-nav">
     <span class="nav-label">Principal</span>
@@ -2711,18 +2711,30 @@ function loadFromCloud(){
         if(doc.exists && doc.data() && doc.data().items){
           var firebaseItems = doc.data().items;
           var localItems = db[key] || [];
-
-          // If we just saved/deleted locally (saveLock active), trust local
-          if(_saveLock[key] && Date.now() < _saveLock[key]){
-            // Our local data is fresher - push it to Firebase if different
-            if(JSON.stringify(firebaseItems) !== JSON.stringify(localItems)){
+          
+          // ALWAYS filter out permanently deleted IDs from Firebase data
+          var deletedForKey = _deletedIds[key] || {};
+          var filtered = firebaseItems.filter(function(item){
+            return !deletedForKey[item.id];
+          });
+          
+          // If we filtered some items, re-sync to Firebase
+          if(filtered.length < firebaseItems.length){
+            db[key] = filtered;
+            try { _store.set('agt2_'+key, JSON.stringify(filtered)); } catch(e){}
+            _saveLock[key] = Date.now() + 120000;
+            syncToCloud(key); // Push the filtered version to Firebase
+            refreshCurrentView(key);
+          } else if(_saveLock[key] && Date.now() < _saveLock[key]){
+            // Lock active - we just saved, trust local
+            if(filtered.length !== localItems.length || JSON.stringify(filtered) !== JSON.stringify(localItems)){
               syncToCloud(key);
             }
           } else {
-            // Firebase is the source of truth - accept its data
-            db[key] = firebaseItems;
-            try { _store.set('agt2_'+key, JSON.stringify(firebaseItems)); } catch(e){}
-            try { sessionStorage.setItem('agt2_bak_'+key, JSON.stringify(firebaseItems)); } catch(e){}
+            // Lock expired - accept Firebase data
+            db[key] = filtered;
+            try { _store.set('agt2_'+key, JSON.stringify(filtered)); } catch(e){}
+            try { sessionStorage.setItem('agt2_bak_'+key, JSON.stringify(filtered)); } catch(e){}
           }
           
           refreshCurrentView(key);
@@ -2930,6 +2942,9 @@ function envDel(id){
 
 var _saveLock = {};
 var _deletedIds = {};
+// Load deleted IDs from localStorage so they survive page reloads
+try { var _sd = localStorage.getItem('_agri_del'); if(_sd) _deletedIds = JSON.parse(_sd); } catch(e){}
+function _saveDeletedIds(){ try { localStorage.setItem('_agri_del', JSON.stringify(_deletedIds)); } catch(e){} }
 
 function save(k){ 
   var data = JSON.stringify(db[k]);
@@ -3653,20 +3668,31 @@ function del(key, id, refresh){
         _undoStack.push({ key: key, item: JSON.parse(JSON.stringify(item)), refresh: refresh });
         if(_undoStack.length > 20) _undoStack.shift();
       }
-      // DELETE: Remove from local array immediately
+      // DELETE: Record in permanent deleted list FIRST
+      if(!_deletedIds[key]) _deletedIds[key] = {};
+      _deletedIds[key][id] = Date.now();
+      _saveDeletedIds(); // persist to localStorage immediately
+
+      // Remove from local array
       db[key] = db[key].filter(x => x.id !== id);
       
-      // Set 60 second lock - prevents onSnapshot from restoring the deleted item
-      _saveLock[key] = Date.now() + 60000;
+      // Set lock
+      _saveLock[key] = Date.now() + 120000; // 2 minute lock
       
-      // Save to localStorage directly (bypasses save() to avoid lock reset)
+      // Save to localStorage
       try { localStorage.setItem('agt2_'+key, JSON.stringify(db[key])); } catch(e){}
       try { sessionStorage.setItem('agt2_bak_'+key, JSON.stringify(db[key])); } catch(e){}
       
-      // Sync to Firebase IMMEDIATELY - skip the 1s debounce
+      // Sync to Firebase immediately
       if(_syncEnabled && _fundoId){
         clearTimeout(window['_syncTimer_'+key]);
         syncToCloud(key);
+        // After Firebase confirms, refresh the lock
+        setTimeout(function(){
+          if(_deletedIds[key] && _deletedIds[key][id]){
+            _saveLock[key] = Date.now() + 120000;
+          }
+        }, 5000);
       }
       
       refresh();
