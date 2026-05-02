@@ -1,5 +1,5 @@
 // AgriTech Service Worker v5 - Smart Update Handler
-const CACHE = 'agritech-v8';
+const CACHE = 'agritech-v9';
 const ASSETS = ['/', '/index.html'];
 
 self.addEventListener('install', function(e){
