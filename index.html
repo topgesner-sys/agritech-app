@@ -2,7 +2,16 @@
 <html lang="es">
 <head>
 <script>
-// Force unregister any service worker and clear cache on every load
+// VERSIÓN: 2.9 - Si el navegador tiene version vieja, forzar recarga
+var _APP_VERSION = '2.9';
+var _cachedVersion = sessionStorage.getItem('_appVersion');
+if(_cachedVersion && _cachedVersion !== _APP_VERSION) {
+  sessionStorage.setItem('_appVersion', _APP_VERSION);
+  window.location.reload(true);
+} else {
+  sessionStorage.setItem('_appVersion', _APP_VERSION);
+}
+// Desregistrar SW y limpiar caches
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(function(regs){
     regs.forEach(function(r){ r.unregister(); });
