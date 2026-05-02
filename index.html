@@ -7770,6 +7770,13 @@ function openEdit(module, id){
     openModal('modal-envase'); return;
   }
 
+  if(module==='animales'){ if(typeof animEdit==='function') animEdit(id); return; }
+  if(module==='compradores'){ if(typeof compEdit==='function') compEdit(id); return; }
+  if(module==='sanidad'){ if(typeof sanEdit==='function') sanEdit(id); return; }
+  if(module==='reproduccion'){ if(typeof repEdit==='function') repEdit(id); return; }
+  if(module==='eventos'){ if(typeof evtEdit==='function') evtEdit(id); return; }
+  if(module==='creditos'){ if(typeof credEdit==='function') credEdit(id); return; }
+  if(module==='cuotas'){ if(typeof cuotaEdit==='function') cuotaEdit(id); return; }
 }
 
 
