@@ -761,7 +761,7 @@ textarea{resize:vertical;min-height:72px}
   <div class="view" id="view-costos">
     <div class="section-header">
       <div><div class="section-title">💰 Costos y Gastos</div><div class="section-sub">Control financiero del fundo</div></div>
-      <button class="btn btn-primary" onclick="openModal('modal-costo')">＋ Nuevo Gasto</button>
+      <button class="btn btn-secondary" onclick="syncAllJornadasToGastos()" style="margin-right:8px">🔄 Sincronizar Jornadas</button><button class="btn btn-primary" onclick="openModal('modal-costo')">＋ Nuevo Gasto</button>
     </div>
     <div class="cost-strip" id="cost-strip"></div>
     <div class="grid-2">
@@ -4063,6 +4063,18 @@ function renderTrabajadores(){
 
 // ========== COSTOS ==========
 function renderCostos(){
+  // Auto-sync jornadas to costos when view opens (silent)
+  if(typeof syncAllJornadasToGastos === 'function' && (db.jornadas||[]).length > 0){
+    var jornadasSinGasto = (db.jornadas||[]).filter(function(j){
+      if(!j.pago || j.pago <= 0) return false;
+      var refKey = 'jornadaId:' + j.id;
+      return !(db.costos||[]).find(function(c){ return c.obs && c.obs.indexOf(refKey) >= 0; });
+    });
+    if(jornadasSinGasto.length > 0){
+      // Silent sync - don't show toast
+      jornadasSinGasto.forEach(function(j){ autoRegistrarGastoJornada(j); });
+    }
+  }
   const cat=document.getElementById('f-cost-cat').value;
   const filt=db.costos.filter(c=>!cat||c.cat===cat).sort((a,b)=>b.fecha.localeCompare(a.fecha));
 
@@ -6055,6 +6067,45 @@ function autoRegistrarLiquidacionCompleta(workerId, fechaDesde, fechaHasta){
   });
   save('costos');
   toast('📊 Liquidación registrada en Gastos: ' + fmtMoney(total));
+}
+
+
+// ===== SINCRONIZACIÓN JORNADAS → GASTOS =====
+
+function syncAllJornadasToGastos(){
+  var jornadasPagadas = (db.jornadas||[]).filter(function(j){ return j.pago && j.pago > 0; });
+  var registradas = 0;
+  var omitidas = 0;
+  
+  jornadasPagadas.forEach(function(j){
+    var refKey = 'jornadaId:' + j.id;
+    var yaExiste = (db.costos||[]).find(function(c){ return c.obs && c.obs.indexOf(refKey) >= 0; });
+    if(yaExiste){ omitidas++; return; }
+    
+    var worker = (db.trabajadores||[]).find(function(w){ return w.id === j.workerId; });
+    var nombre = worker ? worker.nombre : 'Trabajador';
+    
+    if(!db.costos) db.costos = [];
+    db.costos.push({
+      id: genId(db.costos),
+      desc: 'Jornal — ' + nombre + ' (' + fmtDate(j.fecha) + ')',
+      cat: 'Mano de obra',
+      monto: j.pago,
+      fecha: j.fecha,
+      obs: refKey + ' | Auto-registrado'
+    });
+    registradas++;
+  });
+  
+  if(registradas > 0){
+    save('costos');
+    renderCostos();
+    renderDashboard();
+    toast('✅ ' + registradas + ' jornadas registradas en Gastos');
+  } else {
+    toast('ℹ️ Todo ya estaba sincronizado (' + omitidas + ' jornadas)');
+  }
+  return {registradas: registradas, omitidas: omitidas};
 }
 
 // ========== AUTH & MULTI-USER SYSTEM ==========
