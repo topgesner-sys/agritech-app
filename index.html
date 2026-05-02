@@ -417,7 +417,7 @@ textarea{resize:vertical;min-height:72px}
     <div class="logo-mark">🌿</div>
     <div class="logo-name">AgriTech</div>
     <div class="logo-sub">Gestión Agrícola</div>
-    <div class="logo-ver">v2.6b — Fix Cache</div>
+    <div class="logo-ver">v2.7 — Fix Sync</div>
   </div>
   <nav class="sidebar-nav">
     <span class="nav-label">Principal</span>
@@ -2669,23 +2669,19 @@ function showSyncStatus(msg, color){
 }
 
 // ========== FIREBASE SYNC ==========
-async function syncToCloud(key){
+function syncToCloud(key){
   if(!_syncEnabled || !_fundoId) return;
-  // Safety: don't sync empty array unless intentional delete
   var items = db[key] || [];
-  try {
-    await _db.collection('fundos').doc(_fundoId).collection(key).doc('data')
-      .set({ items: items, updatedAt: new Date().toISOString() });
-    showSyncStatus('✅ Guardado en nube', '#52b788');
-    setTimeout(function(){ showSyncStatus('🟢 En vivo', '#52b788'); }, 2000);
-  } catch(e) {
-    showSyncStatus('⚠️ Error sync', '#e07070');
-    console.error('Sync error para', key, ':', e.code, e.message);
-    // If permission denied, show helpful message
-    if(e.code === 'permission-denied'){
-      console.error('FIRESTORE RULES: Necesitas actualizar las reglas de seguridad en Firebase Console');
-    }
-  }
+  _db.collection('fundos').doc(_fundoId).collection(key).doc('data')
+    .set({ items: items, updatedAt: new Date().toISOString() })
+    .then(function(){
+      showSyncStatus('\u2705 Guardado en nube', '#52b788');
+      setTimeout(function(){ showSyncStatus('\uD83D\uDFE2 En vivo', '#52b788'); }, 2000);
+    })
+    .catch(function(e){
+      showSyncStatus('\u26A0\uFE0F Error sync', '#e07070');
+      console.error('Sync error para', key, ':', e.code, e.message);
+    });
 }
 
 // Real-time listeners storage
