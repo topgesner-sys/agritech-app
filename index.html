@@ -3346,11 +3346,11 @@ function openModal(id){
 function closeModal(id){
   var el = document.getElementById(id);
   if(el){ el.classList.remove('open'); }
-  // Reset edit state when user closes modal
-  var editModals = ['modal-jornada','modal-costo','modal-cosecha','modal-insumo',
-    'modal-inventario','modal-envase','modal-animal','modal-sanidad',
-    'modal-reproduccion','modal-comprador','modal-evento','modal-credito','modal-clima'];
-  if(editModals.indexOf(id) >= 0){ _editId = null; _editModule = null; }
+  // Always reset edit state on ANY modal close
+  _editId = null; _editModule = null;
+  // Reset modal title to default
+  var mt = el ? el.querySelector('.modal-title') : null;
+  if(mt && mt.dataset.default) mt.textContent = mt.dataset.default;
 }
 function openQuickAdd(){
   // If on asistencia view, open asistencia modal directly
@@ -4697,6 +4697,26 @@ function saveCredito(){
   const inicio=document.getElementById('cred-inicio').value;
   const cuotasTotal=parseInt(document.getElementById('cred-cuotas').value)||0;
   if(!nom||!entidad||!monto||!inicio||!cuotasTotal){ toast('⚠️ Completa los campos requeridos'); return; }
+  if(_editId && _editModule==='creditos'){
+    var _ei=(db.creditos||[]).findIndex(function(x){return x.id===_editId;});
+    if(_ei>=0){
+      var cur=db.creditos[_ei];
+      cur.nombre = document.getElementById('cred-nom').value;
+      cur.entidad = document.getElementById('cred-entidad').value;
+      cur.tipo = document.getElementById('cred-tipo').value;
+      cur.monto = parseFloat(document.getElementById('cred-monto').value)||0;
+      cur.inicio = document.getElementById('cred-inicio').value;
+      cur.estado = document.getElementById('cred-estado').value;
+      cur.obs = document.getElementById('cred-obs').value;
+    }
+    _editId=null; _editModule=null;
+    _saveLock['creditos']=Date.now()+15000;
+    save('creditos');
+    closeModal('modal-credito');
+    toast('\u2705 Registro actualizado');
+    if(typeof renderCreditos==='function') renderCreditos();
+    renderDashboard(); return;
+  }
   db.creditos.push({
     id:genId(db.creditos),nombre:nom,entidad,
     tipo:document.getElementById('cred-tipo').value,
@@ -5495,6 +5515,24 @@ function saveReproduccion(){
   const tipo=document.getElementById('rep-tipo').value;
   const fecha=document.getElementById('rep-fecha').value;
   if(!animalId||!tipo||!fecha){ toast('⚠️ Animal, tipo y fecha son requeridos'); return; }
+  if(_editId && _editModule==='reproduccion'){
+    var _ei=(db.reproduccion||[]).findIndex(function(x){return x.id===_editId;});
+    if(_ei>=0){
+      var cur=db.reproduccion[_ei];
+      cur.animalId = parseInt(document.getElementById('rep-animal').value)||0;
+      cur.tipo = document.getElementById('rep-tipo').value;
+      cur.fecha = document.getElementById('rep-fecha').value;
+      cur.resultado = document.getElementById('rep-resultado').value;
+      cur.obs = document.getElementById('rep-obs').value;
+    }
+    _editId=null; _editModule=null;
+    _saveLock['reproduccion']=Date.now()+15000;
+    save('reproduccion');
+    closeModal('modal-reproduccion');
+    toast('\u2705 Registro actualizado');
+    if(typeof renderReproduccion==='function') renderReproduccion();
+    renderDashboard(); return;
+  }
   db.reproduccion.push({
     id:genId(db.reproduccion),animalId,tipo,fecha,
     padre:document.getElementById('rep-padre').value||'—',
@@ -7255,7 +7293,28 @@ function saveTrabajador(){
   } else {
     // NEW MODE - original save logic
     readImgAsB64('w-foto', function(foto){
-      db.trabajadores.push({
+      if(_editId && _editModule==='trabajadores'){
+    var _ei=(db.trabajadores||[]).findIndex(function(x){return x.id===_editId;});
+    if(_ei>=0){
+      var cur=db.trabajadores[_ei];
+      cur.nombre = document.getElementById('w-nom').value;
+      cur.rut = document.getElementById('w-rut').value;
+      cur.rol = document.getElementById('w-rol').value;
+      cur.tel = document.getElementById('w-tel').value;
+      cur.tarifa = parseFloat(document.getElementById('w-tarifa').value)||0;
+      cur.estado = document.getElementById('w-estado').value;
+      cur.alias = (document.getElementById('w-alias')||{}).value||'';
+      cur.tarifaDia = parseFloat((document.getElementById('w-tarifa-dia')||{}).value)||0;
+    }
+    _editId=null; _editModule=null;
+    _saveLock['trabajadores']=Date.now()+15000;
+    save('trabajadores');
+    closeModal('modal-trabajadore');
+    toast('\u2705 Registro actualizado');
+    if(typeof renderTrabajadores==='function') renderTrabajadores();
+    renderDashboard(); return;
+  }
+  db.trabajadores.push({
         id: genId(db.trabajadores),
         nombre: nom,
         rut: document.getElementById('w-rut').value,
@@ -7678,6 +7737,23 @@ function saveAdelanto(){
   var fecha = document.getElementById('adel-fecha').value;
   if(!wid||!monto||!fecha){ toast('⚠️ Completa trabajador, monto y fecha'); return; }
   if(!db.adelantos) db.adelantos = [];
+  if(_editId && _editModule==='adelantos'){
+    var _ei=(db.adelantos||[]).findIndex(function(x){return x.id===_editId;});
+    if(_ei>=0){
+      var cur=db.adelantos[_ei];
+      cur.workerId = parseInt(document.getElementById('adel-worker').value)||0;
+      cur.fecha = document.getElementById('adel-fecha').value;
+      cur.monto = parseFloat(document.getElementById('adel-monto').value)||0;
+      cur.desc = document.getElementById('adel-desc').value;
+    }
+    _editId=null; _editModule=null;
+    _saveLock['adelantos']=Date.now()+15000;
+    save('adelantos');
+    closeModal('modal-adelanto');
+    toast('\u2705 Registro actualizado');
+    if(typeof renderAdelantos==='function') renderAdelantos();
+    renderDashboard(); return;
+  }
   db.adelantos.push({ id:genId(db.adelantos), workerId:wid, fecha:fecha, monto:monto,
     periodo:document.getElementById('adel-periodo').value,
     desc:document.getElementById('adel-desc').value, descontado:false });
@@ -7750,6 +7826,25 @@ function saveFactura(){
     fechaIngreso:fechaIng, fechaVencimiento:document.getElementById('fact-fecha-venc').value,
     categoria:cat, estado:document.getElementById('fact-estado').value,
     notas:document.getElementById('fact-notas').value, creadoEn:today() };
+  if(_editId && _editModule==='facturas'){
+    var _ei=(db.facturas||[]).findIndex(function(x){return x.id===_editId;});
+    if(_ei>=0){
+      var cur=db.facturas[_ei];
+      cur.numero = document.getElementById('fact-num').value;
+      cur.proveedor = document.getElementById('fact-prov').value;
+      cur.desc = document.getElementById('fact-desc').value;
+      cur.fechaIngreso = document.getElementById('fact-fecha-ing').value;
+      cur.estado = document.getElementById('fact-estado').value;
+      cur.notas = document.getElementById('fact-notas').value;
+    }
+    _editId=null; _editModule=null;
+    _saveLock['facturas']=Date.now()+15000;
+    save('facturas');
+    closeModal('modal-factura');
+    toast('\u2705 Registro actualizado');
+    if(typeof renderFacturas==='function') renderFacturas();
+    renderDashboard(); return;
+  }
   db.facturas.push(f); save('facturas');
   if(document.getElementById('fact-crear-gasto').checked){
     db.costos.push({ id:genId(db.costos), desc:'Factura N°'+num+' — '+prov, cat:cat, monto:total, fecha:fechaIng, obs:'IVA:'+fmtMoney(ivaMonto)+' N°:'+num });
@@ -7906,162 +8001,155 @@ function renderVentas(){
 // Unified openEdit - handles all modules
 
 function openEdit(module, id){
-  if(module==='adelantos'){
-    var a=(db.adelantos||[]).find(function(x){return x.id===id;});
-    if(!a) return;
-    _editId=id; _editModule='adelantos';
-    var wsel=document.getElementById('adel-worker'); if(wsel) wsel.value=a.workerId;
-    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
-    s('adel-fecha',a.fecha); s('adel-monto',a.monto); s('adel-periodo',a.periodo); s('adel-desc',a.desc);
-    openModal('modal-adelanto'); return;
-  }
-  if(module==='facturas'){
-    var f=(db.facturas||[]).find(function(x){return x.id===id;});
-    if(!f) return;
-    _editId=id; _editModule='facturas';
-    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
-    s('fact-num',f.numero); s('fact-prov',f.proveedor); s('fact-cliente',f.nCliente);
-    s('fact-venta',f.nVenta); s('fact-desc',f.descripcion); s('fact-neto',f.neto);
-    s('fact-fecha-ing',f.fechaIngreso); s('fact-fecha-venc',f.fechaVencimiento);
-    s('fact-notas',f.notas); s('fact-estado',f.estado);
-    var ti=document.getElementById('modal-factura-title'); if(ti) ti.textContent='✏️ Editar Factura';
-    calcFactura(); openModal('modal-factura'); return;
-  }
-  if(module==='ventas'){
-    var v=(db.ventas||[]).find(function(x){return x.id===id;});
-    if(!v) return;
-    var s=function(eid,val){var el=document.getElementById(eid);if(el)el.value=val||'';};
-    s('vt-fecha',v.fecha); s('vt-cantidad',v.cantidad); s('vt-precio',v.precio);
-    s('vt-env-llenos',v.envLlenos); s('vt-env-vacios',v.envVacios); s('vt-notas',v.notas);
-    if(document.getElementById('vt-comprador')) document.getElementById('vt-comprador').value=v.compradorId;
-    calcVenta(); openModal('modal-venta'); return;
-  }
-
-  if(module==='adelantos'){
-    var a=(db.adelantos||[]).find(function(x){return x.id===id;});
-    if(!a) return;
-    _editId=id; _editModule='adelantos';
-    var wsel=document.getElementById('adel-worker'); if(wsel) wsel.value=a.workerId;
-    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
-    s('adel-fecha',a.fecha); s('adel-monto',a.monto); s('adel-periodo',a.periodo); s('adel-desc',a.desc);
-    openModal('modal-adelanto'); return;
-  }
-  if(module==='facturas'){
-    var f=(db.facturas||[]).find(function(x){return x.id===id;});
-    if(!f) return;
-    _editId=id; _editModule='facturas';
-    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
-    s('fact-num',f.numero); s('fact-prov',f.proveedor); s('fact-cliente',f.nCliente);
-    s('fact-venta',f.nVenta); s('fact-desc',f.descripcion); s('fact-neto',f.neto);
-    s('fact-fecha-ing',f.fechaIngreso); s('fact-fecha-venc',f.fechaVencimiento);
-    s('fact-notas',f.notas); s('fact-estado',f.estado);
-    var ti=document.getElementById('modal-factura-title'); if(ti) ti.textContent='✏️ Editar Factura';
-    calcFactura(); openModal('modal-factura'); return;
-  }
-  if(module==='ventas'){
-    var v=(db.ventas||[]).find(function(x){return x.id===id;});
-    if(!v) return;
-    var s=function(eid,val){var el=document.getElementById(eid);if(el)el.value=val||'';};
-    s('vt-fecha',v.fecha); s('vt-cantidad',v.cantidad); s('vt-precio',v.precio);
-    s('vt-env-llenos',v.envLlenos); s('vt-env-vacios',v.envVacios); s('vt-notas',v.notas);
-    if(document.getElementById('vt-comprador')) document.getElementById('vt-comprador').value=v.compradorId;
-    calcVenta(); openModal('modal-venta'); return;
-  }
-
+  ensureArray(module);
+  var item = (db[module]||[]).find(function(x){ return x.id===id; });
+  if(!item){ toast('\u26a0\uFE0F Registro no encontrado'); return; }
+  _editId = id; _editModule = module;
+  var s = function(eid,val){ var el=document.getElementById(eid); if(el) el.value=(val===undefined||val===null)?'':val; };
 
   if(module==='cosechas'){
-    ensureArray('cosechas');
-    var item=(db.cosechas||[]).find(function(x){return x.id===id;});
-    if(!item){ toast('⚠️ Dato no encontrado. Recarga la página e intenta de nuevo.'); return; } _editId=id; _editModule='cosechas';
-    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
-    s('c-tipo',item.tipo); s('c-fecha',item.fecha); s('c-kg',item.kg||0);
-    s('c-sector',item.sector); s('c-bins',item.bins||0); s('c-c1',item.c1||0);
-    s('c-c2',item.c2||0); s('c-obs',item.obs);
-    if(document.getElementById('c-tipo')) document.getElementById('c-tipo').dispatchEvent(new Event('change'));
+    s('c-tipo',item.tipo); s('c-fecha',item.fecha); s('c-kg',item.kg);
+    s('c-sector',item.sector); s('c-bins',item.bins); s('c-c1',item.c1);
+    s('c-c2',item.c2); s('c-obs',item.obs);
+    toggleCamposCosecha();
+    var _mt=document.querySelector('#modal-cosecha .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
     openModal('modal-cosecha'); return;
   }
   if(module==='insumos'){
-    ensureArray('insumos');
-    var item=(db.insumos||[]).find(function(x){return x.id===id;});
-    if(!item){ toast('⚠️ Dato no encontrado. Recarga la página e intenta de nuevo.'); return; } _editId=id; _editModule='insumos';
-    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
     s('i-nom',item.nombre); s('i-tipo',item.tipo); s('i-cant',item.cantidad);
-    s('i-unidad',item.unidad); s('i-fecha',item.fecha); s('i-costo',item.costo||0); s('i-obs',item.obs);
+    s('i-unidad',item.unidad); s('i-fecha',item.fecha); s('i-costo',item.costo);
+    s('i-obs',item.obs);
+    var _mt=document.querySelector('#modal-insumo .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
     openModal('modal-insumo'); return;
   }
   if(module==='inventario'){
-    ensureArray('inventario');
-    var item=(db.inventario||[]).find(function(x){return x.id===id;});
-    if(!item){ toast('⚠️ Dato no encontrado. Recarga la página e intenta de nuevo.'); return; } _editId=id; _editModule='inventario';
-    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
     s('inv-nom',item.nombre); s('inv-cat',item.cat); s('inv-cant',item.cantidad);
-    s('inv-min',item.minimo||0); s('inv-unidad',item.unidad); s('inv-fecha',item.fecha); s('inv-prov',item.proveedor);
+    s('inv-min',item.minimo); s('inv-unidad',item.unidad);
+    s('inv-fecha',item.fecha); s('inv-prov',item.proveedor);
+    var _mt=document.querySelector('#modal-inventario .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
     openModal('modal-inventario'); return;
   }
+  if(module==='trabajadores'){
+    s('w-nom',item.nombre); s('w-rut',item.rut); s('w-rol',item.rol);
+    s('w-tel',item.tel); s('w-tarifa',item.tarifa); s('w-estado',item.estado);
+    s('w-alias',item.alias); s('w-tarifa-dia',item.tarifaDia);
+    s('w-t-palta-bin',item.tarifaPaltaBin); s('w-t-palta-kg',item.tarifaPaltaKg);
+    s('w-t-frut-c1',item.tarifaFrutC1); s('w-t-frut-c2',item.tarifaFrutC2);
+    var _mt=document.querySelector('#modal-trabajador .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
+    openModal('modal-trabajador'); return;
+  }
+  if(module==='jornadas'){
+    s('j-worker',item.workerId); s('j-fecha',item.fecha); s('j-sector',item.sector);
+    s('j-modalidad',item.modo||'jornal'); s('j-horas',item.horas); s('j-tarea',item.tarea);
+    s('j-obs',item.obs);
+    s('j-palta-bins',item.paltaBins); s('j-precio-bin',item.precioBin);
+    s('j-palta-kg',item.paltaKg); s('j-frut-c1',item.frutC1);
+    s('j-frut-c2',item.frutC2); s('j-frut-kg',item.frutKg);
+    if(typeof prefillJornadaPrices==='function') prefillJornadaPrices();
+    if(typeof calcJornal==='function') calcJornal();
+    var _mt=document.querySelector('#modal-jornada .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
+    openModal('modal-jornada'); return;
+  }
   if(module==='costos'){
-    // Ensure data is loaded from localStorage if db is empty
-    ensureArray('costos');
-    var item=(db.costos||[]).find(function(x){return x.id===id;});
-    if(!item){
-      toast('⚠️ Dato no encontrado. Recarga la página.'); return;
-    }
-    _editId=id; _editModule='costos';
-    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
-    s('ct-desc',item.desc); s('ct-monto',item.monto); s('ct-fecha',item.fecha); s('ct-obs',item.obs);
-    // Handle category select - check if it's a standard or custom value
-    var catEl=document.getElementById('ct-cat');
-    var stdCats=['Mano de obra','Insumos','Maquinaria','Transporte','Otros'];
-    if(catEl){
-      if(stdCats.indexOf(item.cat)>=0){
-        catEl.value=item.cat;
-        var otroEl=document.getElementById('ct-cat-otro');
-        if(otroEl) otroEl.style.display='none';
-      } else {
-        catEl.value='__custom__';
-        var otroEl2=document.getElementById('ct-cat-otro');
-        if(otroEl2){ otroEl2.value=item.cat; otroEl2.style.display='block'; }
-      }
-    }
-    var mt=document.querySelector('#modal-costo .modal-title');
-    if(mt) mt.textContent='✏️ Editar Gasto';
+    s('ct-desc',item.desc); s('ct-cat',item.cat); s('ct-monto',item.monto);
+    s('ct-fecha',item.fecha); s('ct-obs',item.obs);
+    var _mt=document.querySelector('#modal-costo .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
     openModal('modal-costo'); return;
   }
   if(module==='clima'){
-    ensureArray('clima');
-    var item=(db.clima||[]).find(function(x){return x.id===id;});
-    if(!item){ toast('⚠️ Dato no encontrado. Recarga la página e intenta de nuevo.'); return; } _editId=id; _editModule='clima';
-    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
-    s('cl-fecha',item.fecha); s('cl-cond',item.cond); s('cl-tmin',item.tmin); s('cl-tmax',item.tmax);
-    s('cl-lluvia',item.lluvia||0); s('cl-viento',item.viento||0); s('cl-obs',item.obs);
+    s('cl-fecha',item.fecha); s('cl-cond',item.cond); s('cl-tmin',item.tmin);
+    s('cl-tmax',item.tmax); s('cl-lluvia',item.lluvia); s('cl-viento',item.viento);
+    s('cl-obs',item.obs);
+    var _mt=document.querySelector('#modal-clima .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
     openModal('modal-clima'); return;
   }
+  if(module==='eventos'){
+    s('ev-nom',item.nombre); s('ev-tipo',item.tipo); s('ev-fecha',item.fecha);
+    s('ev-resp',item.resp); s('ev-estado',item.estado); s('ev-obs',item.obs);
+    var _mt=document.querySelector('#modal-evento .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
+    openModal('modal-evento'); return;
+  }
+  if(module==='creditos'){
+    s('cred-nom',item.nombre); s('cred-entidad',item.entidad); s('cred-tipo',item.tipo);
+    s('cred-monto',item.monto); s('cred-inicio',item.inicio); s('cred-cuotas',item.cuotas);
+    s('cred-tasa',item.tasa); s('cred-estado',item.estado); s('cred-obs',item.obs);
+    var _mt=document.querySelector('#modal-credito .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
+    openModal('modal-credito'); return;
+  }
+  if(module==='animales'){
+    s('a-especie',item.especie); s('a-nombre',item.nombre); s('a-arete',item.arete);
+    s('a-sexo',item.sexo); s('a-nacimiento',item.nacimiento); s('a-peso',item.peso);
+    s('a-potrero',item.potrero); s('a-estado',item.estado); s('a-valor',item.valor);
+    s('a-fecha',item.fecha); s('a-obs',item.obs);
+    var _mt=document.querySelector('#modal-animal .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
+    openModal('modal-animal'); return;
+  }
+  if(module==='sanidad'){
+    s('san-animal',item.animalId); s('san-fecha',item.fecha); s('san-tipo',item.tipo);
+    s('san-producto',item.producto); s('san-dosis',item.dosis);
+    s('san-costo',item.costo); s('san-obs',item.obs);
+    var _mt=document.querySelector('#modal-sanidad .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
+    openModal('modal-sanidad'); return;
+  }
+  if(module==='reproduccion'){
+    s('rep-animal',item.animalId); s('rep-tipo',item.tipo); s('rep-fecha',item.fecha);
+    s('rep-padre',item.padre); s('rep-crias',item.crias); s('rep-resultado',item.resultado);
+    s('rep-obs',item.obs);
+    var _mt=document.querySelector('#modal-reproduccion .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
+    openModal('modal-reproduccion'); return;
+  }
   if(module==='envases'){
-    var item=(db.envases||[]).find(function(x){return x.id===id;});
-    if(!item) return; _editId=id; _editModule='envases';
-    var s=function(eid,v){var el=document.getElementById(eid);if(el)el.value=v||'';};
-    s('env-tipo',item.tipo); 
-    s('env-movimiento',item.movimiento); 
-    s('env-cantidad',item.cantidad);
-    s('env-fecha',item.fecha); 
-    s('env-notas',item.notas||'');
-    if(document.getElementById('env-comprador')) document.getElementById('env-comprador').value=item.compradorId||'';
-    // Update modal title to show editing
-    var mt = document.querySelector('#modal-envase .modal-title');
-    if(mt) mt.textContent = '✏️ Editar Movimiento de Envase';
-    // Ensure select is populated before opening
-    populateEnvaseSelects();
-    // Set comprador AFTER populate
-    if(document.getElementById('env-comprador')) document.getElementById('env-comprador').value = item.compradorId || '';
+    if(typeof populateEnvaseSelects==='function') populateEnvaseSelects();
+    s('env-comprador',item.compradorId); s('env-tipo',item.tipo);
+    s('env-movimiento',item.movimiento); s('env-cantidad',item.cantidad);
+    s('env-fecha',item.fecha); s('env-notas',item.notas);
+    var _mt=document.querySelector('#modal-envase .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
     openModal('modal-envase'); return;
   }
-
-  if(module==='animales'){ if(typeof animEdit==='function') animEdit(id); return; }
-  if(module==='compradores'){ if(typeof compEdit==='function') compEdit(id); return; }
-  if(module==='sanidad'){ if(typeof sanEdit==='function') sanEdit(id); return; }
-  if(module==='reproduccion'){ if(typeof repEdit==='function') repEdit(id); return; }
-  if(module==='eventos'){ if(typeof evtEdit==='function') evtEdit(id); return; }
-  if(module==='creditos'){ if(typeof credEdit==='function') credEdit(id); return; }
-  if(module==='cuotas'){ if(typeof cuotaEdit==='function') cuotaEdit(id); return; }
+  if(module==='compradores'){
+    s('comp-nombre',item.nombre); s('comp-rut',item.rut);
+    s('comp-contacto',item.contacto); s('comp-tel',item.tel);
+    s('comp-producto',item.producto);
+    var _mt=document.querySelector('#modal-comprador .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
+    openModal('modal-comprador'); return;
+  }
+  if(module==='adelantos'){
+    s('adel-worker',item.workerId); s('adel-fecha',item.fecha);
+    s('adel-monto',item.monto); s('adel-desc',item.desc);
+    var _mt=document.querySelector('#modal-adelanto .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
+    openModal('modal-adelanto'); return;
+  }
+  if(module==='facturas'){
+    s('fact-num',item.numero); s('fact-prov',item.proveedor); s('fact-desc',item.desc);
+    s('fact-neto',item.neto); s('fact-fecha-ing',item.fechaIngreso);
+    s('fact-fecha-venc',item.fechaVencimiento); s('fact-estado',item.estado);
+    s('fact-cat-gasto',item.catGasto); s('fact-notas',item.notas);
+    if(typeof calcFactura==='function') calcFactura();
+    var _mt=document.querySelector('#modal-factura .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
+    openModal('modal-factura'); return;
+  }
+  if(module==='ventas'){
+    s('vt-fecha',item.fecha); s('vt-cantidad',item.cantidad); s('vt-precio',item.precio);
+    s('vt-env-llenos',item.envLlenos); s('vt-env-vacios',item.envVacios); s('vt-notas',item.notas);
+    if(document.getElementById('vt-comprador')) document.getElementById('vt-comprador').value=item.compradorId||'';
+    if(document.getElementById('vt-producto')) document.getElementById('vt-producto').value=item.producto||'';
+    if(typeof calcVenta==='function') calcVenta();
+    var _mt=document.querySelector('#modal-venta .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
+    openModal('modal-venta'); return;
+  }
+  if(module==='empresa'){
+    s('emp-nombre',item.nombre); s('emp-rut',item.rut); s('emp-dir',item.direccion);
+    s('emp-tel',item.tel); s('emp-email',item.email);
+    var _mt=document.querySelector('#modal-empresa .modal-title');if(_mt){if(!_mt.dataset.default)_mt.dataset.default=_mt.textContent;_mt.textContent='\u270f\uFE0F Editando registro';}
+    openModal('modal-empresa'); return;
+  }
+  
+  // Fallback: generic handler for modules with self-contained edit functions
+  var genericHandlers = {
+    animEdit: animEdit, sanEdit: sanEdit, repEdit: repEdit,
+    compEdit: compEdit, evtEdit: evtEdit, credEdit: credEdit, cuotaEdit: cuotaEdit
+  };
+  toast('\u26a0\uFE0F Editar no disponible para: ' + module);
 }
 
 
