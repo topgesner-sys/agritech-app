@@ -4213,18 +4213,35 @@ function renderCostos(){
     }
   }
   const cat=document.getElementById('f-cost-cat').value;
-  const filt=db.costos.filter(c=>!cat||c.cat===cat).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  // Exclude individual jornal auto-entries from detail table (they show as Liquidaciones box above)
+  const filt=db.costos.filter(function(c){
+    var isAutoJornal = c.obs && c.obs.indexOf('jornadaId:') >= 0;
+    return !isAutoJornal && (!cat || c.cat===cat);
+  }).sort((a,b)=>b.fecha.localeCompare(a.fecha));
 
+  // Separate jornadas from manual costs for display
+  var costosManuales = db.costos.filter(function(c){ return !c.obs || c.obs.indexOf('jornadaId:') < 0; });
+  var totalLiquidaciones = db.costos.filter(function(c){ return c.obs && c.obs.indexOf('jornadaId:') >= 0; })
+    .reduce(function(s,c){ return s + (c.monto||0); }, 0);
+  
   const totals={'Mano de obra':0,Insumos:0,Maquinaria:0,Transporte:0,Otros:0};
-  db.costos.forEach(c=>{ if(totals[c.cat]!==undefined) totals[c.cat]+=c.monto; else totals.Otros+=c.monto; });
+  costosManuales.forEach(function(c){ if(totals[c.cat]!==undefined) totals[c.cat]+=c.monto; else totals.Otros+=c.monto; });
+  // Add liquidaciones total to Mano de obra
+  totals['Mano de obra'] += totalLiquidaciones;
   const total=Object.values(totals).reduce((a,b)=>a+b,0);
   document.getElementById('cost-strip').innerHTML=`
     <div class="cost-box"><div class="cost-box-val">${fmtMoney(total)}</div><div class="cost-box-lbl">Total General</div></div>
-    ${Object.entries(totals).map(([k,v])=>`<div class="cost-box"><div class="cost-box-val" style="font-size:1.1rem">${fmtMoney(v)}</div><div class="cost-box-lbl">${k}</div></div>`).join('')}`;
+    <div class="cost-box" style="border-top:3px solid var(--green-mid)"><div class="cost-box-val" style="font-size:1.1rem">${fmtMoney(totalLiquidaciones)}</div><div class="cost-box-lbl">💼 Liquidaciones de Pago</div></div>
+    ${Object.entries(totals).filter(([k])=>k!=='Mano de obra').map(([k,v])=>`<div class="cost-box"><div class="cost-box-val" style="font-size:1.1rem">${fmtMoney(v)}</div><div class="cost-box-lbl">${k}</div></div>`).join('')}
+    ${totals['Mano de obra']>0?`<div class="cost-box"><div class="cost-box-val" style="font-size:1.1rem">${fmtMoney(totals['Mano de obra'])}</div><div class="cost-box-lbl">Mano de Obra</div></div>`:''}`;
 
   dc('ch-cost-cat');
-  const ckeys=Object.keys(totals).filter(k=>totals[k]>0);
-  if(ckeys.length) charts['ch-cost-cat']=_safeChart('ch-cost-cat',cc('doughnut',ckeys,[{data:ckeys.map(k=>totals[k]),backgroundColor:['#2d6a4f','#3b82f6','#8b5cf6','#e9a84c','#6b7c6e'],borderWidth:0}]));
+  // Build chart labels including Liquidaciones
+  var chartLabels = ['Liquidaciones de Pago'].concat(Object.keys(totals).filter(k=>totals[k]>0));
+  var chartData = [totalLiquidaciones].concat(Object.keys(totals).filter(k=>totals[k]>0).map(k=>totals[k]));
+  const ckeys = chartLabels.filter((_,i)=>chartData[i]>0);
+  const cdata = chartData.filter(v=>v>0);
+  if(ckeys.length) charts['ch-cost-cat']=_safeChart('ch-cost-cat',cc('doughnut',ckeys,[{data:cdata,backgroundColor:['#2d6a4f','#3b82f6','#8b5cf6','#e9a84c','#6b7c6e'],borderWidth:0}]));
 
   dc('ch-cost-mes');
   const months=[];
