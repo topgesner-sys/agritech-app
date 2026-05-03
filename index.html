@@ -421,6 +421,79 @@ textarea{resize:vertical;min-height:72px}
 @media(max-width:480px){.stats-grid{grid-template-columns:1fr}}
 
 
+
+/* ===== ADMIN DEBUG PANEL ===== */
+#admin-debug-btn{
+  position:fixed;bottom:24px;right:24px;z-index:9998;
+  width:46px;height:46px;border-radius:50%;border:none;
+  background:#1a3325;color:#52b788;font-size:18px;cursor:pointer;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);display:none;
+  align-items:center;justify-content:center;
+  transition:transform .2s;touch-action:manipulation;
+}
+#admin-debug-btn:hover{transform:scale(1.1);}
+#admin-debug-btn .badge{
+  position:absolute;top:-4px;right:-4px;
+  width:18px;height:18px;border-radius:50%;
+  background:#e07070;color:#fff;font-size:.65rem;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;display:none;
+}
+#admin-debug-panel{
+  position:fixed;bottom:80px;right:16px;z-index:9999;
+  width:420px;max-width:calc(100vw - 32px);
+  max-height:70vh;background:#0d1117;color:#c9d1d9;
+  border-radius:12px;box-shadow:0 16px 48px rgba(0,0,0,.6);
+  display:none;flex-direction:column;font-family:monospace;font-size:.78rem;
+  border:1px solid #30363d;overflow:hidden;
+}
+#admin-debug-panel.open{display:flex;}
+.adp-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;background:#161b22;border-bottom:1px solid #30363d;
+  font-size:.8rem;font-weight:700;color:#58a6ff;
+}
+.adp-header span{display:flex;align-items:center;gap:6px;}
+.adp-tabs{
+  display:flex;border-bottom:1px solid #30363d;background:#161b22;
+}
+.adp-tab{
+  padding:7px 14px;border:none;background:transparent;
+  color:#8b949e;font-size:.72rem;font-weight:600;cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .15s;
+  font-family:monospace;touch-action:manipulation;
+}
+.adp-tab.active{color:#58a6ff;border-bottom-color:#58a6ff;}
+.adp-body{flex:1;overflow-y:auto;padding:10px 12px;}
+.adp-log{
+  padding:3px 6px;border-radius:4px;margin-bottom:3px;
+  font-size:.72rem;display:flex;gap:6px;align-items:flex-start;
+}
+.adp-log.info{color:#79c0ff;}
+.adp-log.success{color:#56d364;}
+.adp-log.error{background:#3d1515;color:#ff7b72;padding:4px 8px;}
+.adp-log.warn{color:#e3b341;}
+.adp-log .ts{color:#484f58;font-size:.65rem;white-space:nowrap;}
+.adp-metric{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0;border-bottom:1px solid #21262d;
+}
+.adp-metric .label{color:#8b949e;}
+.adp-metric .value{color:#58a6ff;font-weight:700;}
+.adp-metric .value.ok{color:#56d364;}
+.adp-metric .value.err{color:#ff7b72;}
+.adp-actions{
+  padding:10px 12px;border-top:1px solid #30363d;
+  display:flex;gap:6px;flex-wrap:wrap;
+}
+.adp-btn{
+  padding:4px 10px;border-radius:5px;border:1px solid #30363d;
+  background:#21262d;color:#c9d1d9;font-size:.7rem;cursor:pointer;
+  font-family:monospace;touch-action:manipulation;
+}
+.adp-btn:hover{background:#30363d;}
+.adp-btn.red{border-color:#e07070;color:#ff7b72;}
+
 </style>
 </head>
 <body>
@@ -2098,6 +2171,34 @@ textarea{resize:vertical;min-height:72px}
 </div>
 
 
+
+<!-- ===== ADMIN DEBUG PANEL ===== -->
+<button id="admin-debug-btn" onclick="toggleDebugPanel()" title="Admin Debug Panel">
+  🛠️<span class="badge" id="adp-error-badge">0</span>
+</button>
+
+<div id="admin-debug-panel">
+  <div class="adp-header">
+    <span>🛠️ Admin Debug Panel</span>
+    <span style="gap:10px">
+      <span id="adp-user-badge" style="font-size:.68rem;color:#56d364"></span>
+      <button class="adp-btn" onclick="toggleDebugPanel()" style="padding:2px 8px">✕</button>
+    </span>
+  </div>
+  <div class="adp-tabs">
+    <button class="adp-tab active" onclick="adpTab('logs')">📋 Logs</button>
+    <button class="adp-tab" onclick="adpTab('estado')">👤 Estado</button>
+    <button class="adp-tab" onclick="adpTab('firebase')">🔥 Firebase</button>
+    <button class="adp-tab" onclick="adpTab('metricas')">📊 Métricas</button>
+  </div>
+  <div class="adp-body" id="adp-body"></div>
+  <div class="adp-actions">
+    <button class="adp-btn" onclick="adpClearLogs()">🗑 Limpiar logs</button>
+    <button class="adp-btn" onclick="adpExportLogs()">📥 Exportar</button>
+    <button class="adp-btn" onclick="adpForceSync()">🔄 Force Sync</button>
+    <button class="adp-btn red" onclick="adpClearCache()">⚠️ Clear Cache</button>
+  </div>
+</div>
 
 <!-- TOAST -->
 <!-- LOGIN MODAL -->
@@ -8320,6 +8421,213 @@ function editarAsistencia(id){
   if(el) el.value=a.fecha;
   setTimeout(abrirNuevaAsistencia, 50);
 }
+
+// ===== ADMIN DEBUG PANEL =====
+var _adpLogs = [];
+var _adpMetrics = { reads:0, writes:0, errors:0, success:0, start:Date.now() };
+var _adpCurrentTab = 'logs';
+var _adpOpen = false;
+
+// Capture global errors automatically
+window.addEventListener('error', function(e){
+  _adpMetrics.errors++;
+  adpLog('error', (e.message||'JS Error') + ' (' + (e.filename||'').split('/').pop() + ':' + (e.lineno||0) + ')');
+  updateAdpBadge();
+});
+window.addEventListener('unhandledrejection', function(e){
+  _adpMetrics.errors++;
+  adpLog('error', 'Promise: ' + (e.reason ? (e.reason.message || String(e.reason)) : 'rejected'));
+  updateAdpBadge();
+});
+
+// Intercept toast for automatic log capture
+setTimeout(function(){
+  var _orig = window.toast;
+  window.toast = function(msg){
+    if(_orig) _orig(msg);
+    var t = (msg.indexOf('\u2705')>=0||msg.indexOf('\u2713')>=0) ? 'success' :
+            (msg.indexOf('\u26a0')>=0||msg.indexOf('\u274c')>=0) ? 'warn' : 'info';
+    if(t==='success') _adpMetrics.success++;
+    adpLog(t, msg.replace(/[\u2705\u26a0\ufe0f\u274c\uD83D\uDDD1\uFE0F]/g,'').trim());
+  };
+}, 1500);
+
+// Intercept syncToCloud to count Firebase writes
+var _origSyncToCloud = syncToCloud;
+window.syncToCloud = function(key){
+  _adpMetrics.writes++;
+  adpLog('info', 'FB write: ' + key + ' (' + (db[key]||[]).length + ' items)');
+  return _origSyncToCloud.apply(this, arguments);
+};
+
+function adpLog(type, msg){
+  var ts = new Date().toTimeString().slice(0,8);
+  _adpLogs.unshift({type:type, msg:String(msg).substring(0,120), ts:ts});
+  if(_adpLogs.length > 300) _adpLogs.length = 300;
+  if(_adpOpen && _adpCurrentTab==='logs') adpRenderBody();
+}
+
+function updateAdpBadge(){
+  var b = document.getElementById('adp-error-badge');
+  if(b && _adpMetrics.errors > 0){
+    b.textContent = _adpMetrics.errors;
+    b.style.display = 'flex';
+  }
+}
+
+function toggleDebugPanel(){
+  if(!_isAdmin) return;
+  _adpOpen = !_adpOpen;
+  var panel = document.getElementById('admin-debug-panel');
+  if(!panel) return;
+  panel.classList.toggle('open', _adpOpen);
+  if(_adpOpen){
+    var ub = document.getElementById('adp-user-badge');
+    if(ub) ub.textContent = (_userId||'?').substring(0,12)+'...';
+    adpRenderBody();
+  }
+}
+
+function adpTab(tab, el){
+  _adpCurrentTab = tab;
+  document.querySelectorAll('.adp-tab').forEach(function(t){ t.classList.remove('active'); });
+  if(el) el.classList.add('active');
+  adpRenderBody();
+}
+
+function adpRenderBody(){
+  var body = document.getElementById('adp-body');
+  if(!body) return;
+  var html = '';
+
+  if(_adpCurrentTab === 'logs'){
+    html = _adpLogs.length ? _adpLogs.map(function(l){
+      return '<div class="adp-log '+l.type+'"><span class="ts">'+l.ts+'</span><span>'+
+             l.msg.replace(/</g,'&lt;')+'</span></div>';
+    }).join('') : '<div style="color:#484f58;padding:20px;text-align:center">Sin logs aun</div>';
+
+  } else if(_adpCurrentTab === 'estado'){
+    var rows = [
+      ['Usuario UID', (_userId||'no auth').substring(0,20), _userId?'ok':'err'],
+      ['Fundo ID', (_fundoId||'N/A').substring(0,20), _fundoId?'ok':'err'],
+      ['Rol admin', _isAdmin?'SI ✅':'NO ❌', _isAdmin?'ok':'err'],
+      ['Sync activo', _syncEnabled?'SI ✅':'NO ❌', _syncEnabled?'ok':''],
+      ['Version', (document.querySelector('.logo-ver')||{}).textContent||'?', ''],
+      ['Uptime', Math.round((Date.now()-_adpMetrics.start)/60000)+' min', ''],
+      ['Trabajadores', (db.trabajadores||[]).length+' registros', ''],
+      ['Jornadas', (db.jornadas||[]).length+' registros', ''],
+      ['Cosechas', (db.cosechas||[]).length+' registros', ''],
+      ['IDs borrados', Object.keys(_deletedIds||{}).map(function(k){
+        return k+':'+Object.keys(_deletedIds[k]).length;
+      }).join(', ')||'ninguno', ''],
+    ];
+    html = rows.map(function(r){
+      return '<div class="adp-metric"><span class="label">'+r[0]+'</span>'+
+             '<span class="value '+r[2]+'">'+r[1]+'</span></div>';
+    }).join('');
+
+  } else if(_adpCurrentTab === 'firebase'){
+    var locks = Object.keys(_saveLock||{}).filter(function(k){return _saveLock[k]>Date.now();});
+    var listeners = Object.keys(window._firebaseListeners||{}).length;
+    var rows2 = [
+      ['Writes totales', _adpMetrics.writes, 'ok'],
+      ['Reads totales', _adpMetrics.reads, ''],
+      ['Locks activos', locks.join(',')||'ninguno', locks.length?'err':'ok'],
+      ['Listeners activos', listeners, listeners>0?'ok':''],
+      ['Sync status', (document.getElementById('sync-status')||{}).textContent||'?', ''],
+    ];
+    html = rows2.map(function(r){
+      return '<div class="adp-metric"><span class="label">'+r[0]+'</span>'+
+             '<span class="value '+r[2]+'">'+r[1]+'</span></div>';
+    }).join('');
+    var writes = _adpLogs.filter(function(l){return l.msg.indexOf('FB write')>=0;}).slice(0,8);
+    html += '<div style="color:#58a6ff;margin:10px 0 4px;font-size:.7rem">Ultimas escrituras:</div>';
+    html += writes.length ? writes.map(function(l){
+      return '<div class="adp-log info"><span class="ts">'+l.ts+'</span><span>'+l.msg+'</span></div>';
+    }).join('') : '<div style="color:#484f58;font-size:.72rem">Sin escrituras aun</div>';
+
+  } else if(_adpCurrentTab === 'metricas'){
+    var rows3 = [
+      ['Exitosas', _adpMetrics.success, 'ok'],
+      ['Errores', _adpMetrics.errors, _adpMetrics.errors>0?'err':'ok'],
+      ['FB writes', _adpMetrics.writes, 'ok'],
+      ['FB reads', _adpMetrics.reads, ''],
+      ['Total logs', _adpLogs.length, ''],
+      ['localStorage keys', localStorage.length, ''],
+      ['IDs borrados total', Object.values(_deletedIds||{}).reduce(function(t,k){return t+Object.keys(k).length;},0), ''],
+      ['Uptime seg', Math.round((Date.now()-_adpMetrics.start)/1000), ''],
+    ];
+    html = rows3.map(function(r){
+      return '<div class="adp-metric"><span class="label">'+r[0]+'</span>'+
+             '<span class="value '+r[2]+'">'+r[1]+'</span></div>';
+    }).join('');
+  }
+
+  body.innerHTML = html;
+}
+
+function adpClearLogs(){
+  _adpLogs = [];
+  _adpMetrics.errors = 0;
+  updateAdpBadge();
+  adpRenderBody();
+}
+
+function adpExportLogs(){
+  if(!_isAdmin) return;
+  var lines = ['AgriTech Debug Log - ' + new Date().toISOString(),''];
+  lines.push('ESTADO:');
+  lines.push('  Usuario: ' + (_userId||'no auth'));
+  lines.push('  Fundo: ' + (_fundoId||'N/A'));
+  lines.push('  Admin: ' + _isAdmin);
+  lines.push('');
+  lines.push('METRICAS:');
+  lines.push('  Exitosas: ' + _adpMetrics.success);
+  lines.push('  Errores: ' + _adpMetrics.errors);
+  lines.push('  FB Writes: ' + _adpMetrics.writes);
+  lines.push('');
+  lines.push('LOGS:');
+  _adpLogs.forEach(function(l){ lines.push('['+l.ts+']['+l.type.toUpperCase()+'] '+l.msg); });
+  var blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'agritech-debug-' + new Date().toISOString().slice(0,10) + '.txt';
+  a.click();
+  adpLog('success', 'Logs exportados');
+}
+
+function adpForceSync(){
+  if(!_isAdmin) return;
+  adpLog('info', 'Force sync iniciado para ' + (typeof KEYS!=='undefined'?KEYS.length:0) + ' keys');
+  if(typeof KEYS!=='undefined' && _syncEnabled && _fundoId){
+    KEYS.forEach(function(k){ syncToCloud(k); });
+  }
+}
+
+function adpClearCache(){
+  if(!_isAdmin) return;
+  if(!confirm('Limpiar cache y recargar?')) return;
+  if('caches' in window) caches.keys().then(function(keys){ keys.forEach(function(k){ caches.delete(k); }); });
+  sessionStorage.clear();
+  adpLog('warn', 'Cache limpiado - recargando...');
+  setTimeout(function(){ window.location.reload(true); }, 600);
+}
+
+function initAdminPanel(){
+  var btn = document.getElementById('admin-debug-btn');
+  if(btn){
+    btn.style.display = _isAdmin ? 'flex' : 'none';
+    if(_isAdmin) adpLog('success', 'Panel admin inicializado: ' + (_userId||'?'));
+  }
+}
+
+// Hook into auth flow
+var _origUpdateSidebar = updateSidebarUser;
+window.updateSidebarUser = function(nombre, isAdminFlag){
+  _origUpdateSidebar(nombre, isAdminFlag);
+  setTimeout(initAdminPanel, 800);
+};
+
 </script>
 </body>
 </html>
