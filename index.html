@@ -2200,6 +2200,33 @@ textarea{resize:vertical;min-height:72px}
   </div>
 </div>
 
+<!-- MODAL DETALLE ASISTENCIA -->
+<div class="modal-backdrop" id="modal-detalle-asistencia">
+<div class="modal" style="max-width:640px">
+  <div class="modal-title" id="det-asist-titulo">📋 Detalle de Asistencia</div>
+  <div id="det-asist-resumen" style="margin-bottom:16px"></div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Trabajador</th>
+          <th>Cargo</th>
+          <th>Asistencia</th>
+          <th>Tarea</th>
+          <th>Observaciones</th>
+        </tr>
+      </thead>
+      <tbody id="det-asist-tabla"></tbody>
+    </table>
+  </div>
+  <div class="form-actions" style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px">
+    <button class="btn btn-secondary btn-sm" onclick="printDetalleAsistencia()">🖨️ Imprimir</button>
+    <button class="btn btn-secondary" onclick="closeModal('modal-detalle-asistencia')">Cerrar</button>
+  </div>
+</div>
+</div>
+
 <!-- TOAST -->
 <!-- LOGIN MODAL -->
 <div class="modal-backdrop" id="modal-login" style="z-index:10000;background:rgba(26,51,37,.97)">
@@ -6008,12 +6035,12 @@ function renderHistorialAsistencia(){
                     (a.workers ? a.workers.filter(function(w){return w.presente;}).length : 0);
     var ausentes  = a.ausentes  !== undefined ? a.ausentes  :
                     (a.workers ? a.workers.filter(function(w){return !w.presente;}).length : 0);
-    return '<tr>' +
-      '<td><strong>' + fmtDate(a.fecha) + '</strong></td>' +
+    return '<tr style="cursor:pointer" onclick="verDetalleAsistencia(' + a.id + ')" title="Ver detalle">' +
+      '<td><strong style="color:var(--green-mid)">' + fmtDate(a.fecha) + '</strong> <span style="font-size:.7rem;color:var(--text-muted)">👆 ver detalle</span></td>' +
       '<td><span class="badge badge-green">' + presentes + ' presentes</span></td>' +
       '<td><span class="badge badge-red">' + ausentes + ' ausentes</span></td>' +
       '<td style="font-size:.82rem">' + (a.tareaGeneral || '—') + '</td>' +
-      '<td>' +
+      '<td onclick="event.stopPropagation()">' +
         '<button class="btn btn-secondary btn-sm" onclick="editarAsistencia(' + a.id + ')" style="margin-right:4px">✏️</button>' +
         '<button class="btn btn-danger btn-sm" onclick="delAsistenciaReg(' + a.id + ')">🗑</button>' +
       '</td>' +
@@ -8778,6 +8805,91 @@ window.updateSidebarUser = function(nombre, isAdminFlag){
   _origUpdateSidebar(nombre, isAdminFlag);
   setTimeout(initAdminPanel, 800);
 };
+
+
+// ===== DETALLE DE ASISTENCIA POR FECHA =====
+function verDetalleAsistencia(id){
+  var reg = (db.asistencia||[]).find(function(a){ return a.id===id; });
+  if(!reg){ toast('\u26a0\uFE0F Registro no encontrado'); return; }
+  
+  // Set title
+  var titulo = document.getElementById('det-asist-titulo');
+  if(titulo) titulo.textContent = '\uD83D\uDCCB Asistencia — ' + fmtDate(reg.fecha) + (reg.tareaGeneral ? ' — ' + reg.tareaGeneral : '');
+  
+  // Summary boxes
+  var presentes = reg.presentes !== undefined ? reg.presentes : (reg.workers||[]).filter(function(w){return w.presente;}).length;
+  var ausentes  = reg.ausentes  !== undefined ? reg.ausentes  : (reg.workers||[]).filter(function(w){return !w.presente;}).length;
+  var total = reg.workers ? reg.workers.length : 0;
+  
+  var resEl = document.getElementById('det-asist-resumen');
+  if(resEl) resEl.innerHTML =
+    '<div class="cost-strip" style="margin-bottom:0">' +
+      '<div class="cost-box" style="border-top:3px solid var(--green-mid)">' +
+        '<div class="cost-box-val" style="color:var(--green-mid)">' + presentes + '</div>' +
+        '<div class="cost-box-lbl">\u2705 Presentes</div>' +
+      '</div>' +
+      '<div class="cost-box" style="border-top:3px solid var(--red-soft)">' +
+        '<div class="cost-box-val" style="color:var(--red-soft)">' + ausentes + '</div>' +
+        '<div class="cost-box-lbl">\u274c Ausentes</div>' +
+      '</div>' +
+      '<div class="cost-box">' +
+        '<div class="cost-box-val">' + total + '</div>' +
+        '<div class="cost-box-lbl">Total</div>' +
+      '</div>' +
+      (reg.tareaGeneral ? '<div class="cost-box"><div class="cost-box-val" style="font-size:.85rem">' + reg.tareaGeneral + '</div><div class="cost-box-lbl">Tarea del d\u00eda</div></div>' : '') +
+    '</div>';
+  
+  // Worker list
+  var tbody = document.getElementById('det-asist-tabla');
+  if(!tbody) return;
+  
+  if(!reg.workers || !reg.workers.length){
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted)">Sin datos de trabajadores</td></tr>';
+    openModal('modal-detalle-asistencia');
+    return;
+  }
+  
+  // Sort: presentes first, then ausentes
+  var sorted = reg.workers.slice().sort(function(a,b){
+    if(a.presente && !b.presente) return -1;
+    if(!a.presente && b.presente) return 1;
+    return (a.nombre||'').localeCompare(b.nombre||'');
+  });
+  
+  tbody.innerHTML = sorted.map(function(w, i){
+    var worker = (db.trabajadores||[]).find(function(t){ return t.id===w.workerId; });
+    var rol = worker ? worker.rol : (w.rol||'—');
+    var bgColor = w.presente ? '' : 'background:#fff5f5';
+    return '<tr style="' + bgColor + '">' +
+      '<td style="color:var(--text-muted);font-size:.8rem">' + (i+1) + '</td>' +
+      '<td><strong>' + (w.nombre||'—') + '</strong></td>' +
+      '<td style="font-size:.8rem;color:var(--text-muted)">' + rol + '</td>' +
+      '<td>' + (w.presente
+        ? '<span class="badge badge-green">\u2705 Presente</span>'
+        : '<span class="badge badge-red">\u274c Ausente</span>') + '</td>' +
+      '<td style="font-size:.8rem">' + (w.tarea||reg.tareaGeneral||'—') + '</td>' +
+      '<td style="font-size:.78rem;color:var(--text-muted)">' + (w.obs||'—') + '</td>' +
+    '</tr>';
+  }).join('');
+  
+  openModal('modal-detalle-asistencia');
+}
+
+function printDetalleAsistencia(){
+  var titulo = document.getElementById('det-asist-titulo');
+  var tabla = document.getElementById('det-asist-tabla');
+  if(!titulo || !tabla) return;
+  var w = window.open('','_blank');
+  w.document.write('<html><head><title>' + titulo.textContent + '</title>' +
+    '<style>body{font-family:sans-serif;padding:20px}table{width:100%;border-collapse:collapse}' +
+    'th{background:#1a3325;color:#fff;padding:8px}td{padding:7px;border-bottom:1px solid #ddd}' +
+    '.p{color:green;font-weight:700}.a{color:red;font-weight:700}</style></head><body>' +
+    '<h2>' + titulo.textContent + '</h2>' +
+    '<table><thead><tr><th>#</th><th>Trabajador</th><th>Cargo</th><th>Asistencia</th><th>Tarea</th><th>Obs</th></tr></thead>' +
+    '<tbody>' + tabla.innerHTML.replace(/badge-green[^>]*>.*?</g, function(m){ return m; }) + '</tbody></table>' +
+    '<scr'+'ipt>window.onload=function(){window.print()}</scr'+'ipt></body></html>');
+  w.document.close();
+}
 
 </script>
 </body>
