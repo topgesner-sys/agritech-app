@@ -6396,6 +6396,7 @@ function onLoginSuccess(user){
       // Use fundoId from profile (for invited users it points to admin's fundo)
       _fundoId = perfil.fundoId || user.uid;
       _isAdmin = (perfil.rol === 'admin');
+      window._perfil = perfil; // Store for secondary verification
       _syncEnabled = true;
       updateSidebarUser(perfil.nombre || user.email, _isAdmin);
     } else {
@@ -8476,14 +8477,26 @@ function updateAdpBadge(){
 }
 
 function toggleDebugPanel(){
-  if(!_isAdmin) return;
+  // Layer 1: local variable check
+  if(!_isAdmin) { console.warn('[Security] Unauthorized panel access attempt'); return; }
+  // Layer 2: must have active Firebase session
+  if(!_auth || !_auth.currentUser) { console.warn('[Security] No auth session'); return; }
+  // Layer 3: UID must match fundoId (owner) or have admin role in profile
+  var uid = _auth.currentUser.uid;
+  var isOwner = uid === _fundoId;
+  var hasAdminRole = window._perfil && window._perfil.rol === 'admin';
+  if(!isOwner && !hasAdminRole) {
+    console.warn('[Security] UID does not match fundo owner');
+    _isAdmin = false; // Reset if manipulated
+    return;
+  }
   _adpOpen = !_adpOpen;
   var panel = document.getElementById('admin-debug-panel');
   if(!panel) return;
   panel.classList.toggle('open', _adpOpen);
   if(_adpOpen){
     var ub = document.getElementById('adp-user-badge');
-    if(ub) ub.textContent = (_userId||'?').substring(0,12)+'...';
+    if(ub) ub.textContent = (uid||'?').substring(0,12)+'...';
     adpRenderBody();
   }
 }
@@ -8614,11 +8627,44 @@ function adpClearCache(){
 }
 
 function initAdminPanel(){
-  var btn = document.getElementById('admin-debug-btn');
-  if(btn){
-    btn.style.display = _isAdmin ? 'flex' : 'none';
-    if(_isAdmin) adpLog('success', 'Panel admin inicializado: ' + (_userId||'?'));
+  if(!_isAdmin) {
+    // Remove panel from DOM entirely for non-admins
+    var existingPanel = document.getElementById('admin-debug-panel');
+    var existingBtn = document.getElementById('admin-debug-btn');
+    if(existingPanel) existingPanel.remove();
+    if(existingBtn) existingBtn.remove();
+    return;
   }
+  
+  // Verify against Firebase token - not just local var
+  if(_auth && _auth.currentUser) {
+    _auth.currentUser.getIdTokenResult().then(function(tokenResult){
+      var serverAdmin = tokenResult.claims.admin === true || 
+                        (_fundoId && _auth.currentUser.uid === _fundoId);
+      if(!serverAdmin && window._perfil && window._perfil.rol !== 'admin'){
+        // Server says not admin - remove panel
+        var p = document.getElementById('admin-debug-panel');
+        var b = document.getElementById('admin-debug-btn');
+        if(p) p.remove();
+        if(b) b.remove();
+        _isAdmin = false;
+        return;
+      }
+      // Confirmed admin - show button
+      var btn = document.getElementById('admin-debug-btn');
+      if(btn) btn.style.display = 'flex';
+      adpLog('success', 'Panel admin confirmado server-side: ' + (_userId||'?'));
+    }).catch(function(){
+      // Token check failed - show button only based on local role
+      var btn = document.getElementById('admin-debug-btn');
+      if(btn) btn.style.display = 'flex';
+      adpLog('warn', 'Token check failed - usando rol local');
+    });
+  } else {
+    var btn2 = document.getElementById('admin-debug-btn');
+    if(btn2) btn2.style.display = _isAdmin ? 'flex' : 'none';
+  }
+  if(_isAdmin) adpLog('success', 'Panel admin inicializado: ' + (_userId||'?'));
 }
 
 // Hook into auth flow
