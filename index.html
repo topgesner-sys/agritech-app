@@ -174,7 +174,7 @@ label{font-size:var(--fs-label);font-weight:700;color:var(--text-muted);letter-s
 input,select,textarea{padding:10px 13px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-b);font-size:var(--fs-base);color:var(--text);background:var(--card);transition:border-color .2s,box-shadow .2s;outline:none}
 input:focus,select:focus,textarea:focus{border-color:var(--green-mid);box-shadow:0 0 0 3px rgba(82,183,136,.15)}
 textarea{resize:vertical;min-height:72px}
-.form-actions{display:flex;gap:9px;justify-content:flex-end;margin-top:18px;padding:14px 0 20px 0;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--card);z-index:10}
+.form-actions{display:flex;gap:9px;justify-content:flex-end;margin-top:auto;padding:14px 0 6px 0;border-top:1px solid var(--border);background:var(--card);z-index:10;flex-shrink:0}
 
 /* FILTER BAR */
 .filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
@@ -197,7 +197,7 @@ textarea{resize:vertical;min-height:72px}
 /* MODALS */
 .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center}
 .modal-backdrop.open{display:flex}
-.modal{background:var(--card);border-radius:var(--radius);padding:26px 26px 0 26px;width:95%;max-width:580px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);pointer-events:auto;animation:modalIn .3s cubic-bezier(.34,1.56,.64,1);display:flex;flex-direction:column}
+.modal{background:var(--card);border-radius:var(--radius);padding:26px 26px 0 26px;width:95%;max-width:580px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);pointer-events:auto;animation:modalIn .3s cubic-bezier(.34,1.56,.64,1)}
 @keyframes modalIn{from{opacity:0;transform:scale(.92) translateY(18px)}to{opacity:1;transform:scale(1) translateY(0)}}
 .modal-title{font-family:var(--font-d);font-size:1.2rem;color:var(--green-deep);margin-bottom:18px;display:flex;align-items:center;gap:7px}
 
@@ -2756,6 +2756,7 @@ textarea{resize:vertical;min-height:72px}
 <div class="modal-backdrop" id="modal-asistencia">
 <div class="modal" style="max-width:680px">
   <div class="modal-title" id="modal-asist-titulo">📋 Nueva Asistencia</div>
+  <div style="flex:1;overflow-y:auto;padding-right:4px">
   <div class="form-grid" style="margin-bottom:14px">
     <div class="form-group">
       <label>Fecha *</label>
@@ -2779,7 +2780,7 @@ textarea{resize:vertical;min-height:72px}
       <button class="btn btn-secondary btn-sm" onclick="marcarTodosAusentes()">Todos ausentes</button>
     </div>
   </div>
-  <div style="max-height:360px;overflow-y:auto;border:1.5px solid var(--border);border-radius:8px">
+  <div style="flex:1;overflow-y:auto;border:1.5px solid var(--border);border-radius:8px;min-height:200px;max-height:380px">
     <table style="margin:0">
       <thead>
         <tr style="background:#1a3325;color:#b7e4c7">
@@ -2792,6 +2793,7 @@ textarea{resize:vertical;min-height:72px}
       <tbody id="asist-modal-lista"></tbody>
     </table>
   </div>
+  </div><!-- /scrollable content -->
   <div class="form-actions">
     <button class="btn btn-secondary" onclick="closeModal('modal-asistencia')">Cancelar</button>
     <button class="btn btn-primary" onclick="guardarAsistenciaNueva()">💾 Guardar Asistencia</button>
