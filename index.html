@@ -512,7 +512,7 @@ textarea{resize:vertical;min-height:72px}
 }
 .sandbox-toggle.active{background:#e9a84c;color:#1a3325;}
 .admin-user-panel{
-  position:fixed;top:60px;left:260px;width:340px;
+  position:fixed;top:60px;right:16px;width:340px;max-width:calc(100vw - 32px);
   background:var(--card);border-radius:var(--radius);
   border:1px solid var(--border);box-shadow:0 12px 40px rgba(0,0,0,.18);
   z-index:300;display:none;max-height:480px;overflow-y:auto;
@@ -3418,12 +3418,12 @@ function cloneToSandbox(){
   });
 }
 
-function renderUsersPanel(){
+function renderAdminSelectorPanel(){
   if(!_isAdmin || !_fundoId) return;
   var lista = document.getElementById('admin-users-list');
   if(!lista) return;
   
-  _db.collection('usuarios').get().then(function(snap){
+  _db.collection('usuarios').where('fundoId','==',_fundoId).get().then(function(snap){
     var users = [];
     snap.forEach(function(doc){
       var d = doc.data(); d.id = doc.id;
@@ -3467,7 +3467,7 @@ function toggleAdminUsersPanel(){
   var panel = document.getElementById('admin-user-panel');
   if(!panel) return;
   var isOpen = panel.classList.contains('open');
-  if(!isOpen){ renderUsersPanel(); }
+  if(!isOpen){ renderAdminSelectorPanel(); }
   panel.classList.toggle('open');
 }
 function save(k){ 
