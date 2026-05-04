@@ -494,6 +494,34 @@ textarea{resize:vertical;min-height:72px}
 .adp-btn:hover{background:#30363d;}
 .adp-btn.red{border-color:#e07070;color:#ff7b72;}
 
+
+/* MULTI-TENANT BANNER */
+#impersonation-banner{
+  display:none;position:sticky;top:0;z-index:60;
+  background:linear-gradient(135deg,#e9a84c,#c47c15);
+  color:var(--green-deep);padding:8px 20px;
+  font-size:.82rem;font-weight:700;
+  align-items:center;gap:8px;flex-wrap:wrap;
+}
+#impersonation-banner.sandbox{background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;}
+.sandbox-toggle{
+  padding:6px 14px;border-radius:7px;border:none;
+  background:#1a3325;color:#52b788;font-size:.78rem;
+  font-weight:700;cursor:pointer;touch-action:manipulation;
+  transition:all .2s;
+}
+.sandbox-toggle.active{background:#e9a84c;color:#1a3325;}
+.admin-user-panel{
+  position:fixed;top:60px;left:260px;width:340px;
+  background:var(--card);border-radius:var(--radius);
+  border:1px solid var(--border);box-shadow:0 12px 40px rgba(0,0,0,.18);
+  z-index:300;display:none;max-height:480px;overflow-y:auto;
+}
+.admin-user-panel.open{display:block;}
+.aup-header{padding:14px 18px;border-bottom:1px solid var(--border);
+  font-family:var(--font-d);font-size:.95rem;color:var(--green-deep);
+  display:flex;justify-content:space-between;align-items:center;}
+
 </style>
 </head>
 <body>
@@ -577,6 +605,25 @@ textarea{resize:vertical;min-height:72px}
 
 <!-- MAIN -->
 <main class="main">
+<!-- IMPERSONATION BANNER -->
+<div id="impersonation-banner"></div>
+
+<!-- ADMIN USER PANEL -->
+<div class="admin-user-panel" id="admin-user-panel">
+  <div class="aup-header">
+    👥 Seleccionar Usuario
+    <button style="padding:2px 10px;border:1px solid var(--border);border-radius:5px;background:var(--cream);cursor:pointer;font-size:.75rem" 
+            onclick="document.getElementById('admin-user-panel').classList.remove('open')">✕</button>
+  </div>
+  <div style="padding:4px 0" id="admin-users-list">
+    <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:.82rem">Cargando usuarios...</div>
+  </div>
+  <div style="padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
+    <button onclick="adminSelectUser(null,null)" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--cream);cursor:pointer;font-size:.75rem">✕ Ver mis datos</button>
+    <button onclick="cloneToSandbox()" style="padding:5px 12px;border-radius:6px;border:none;background:#8b5cf6;color:#fff;cursor:pointer;font-size:.75rem">📋 Clonar a Sandbox</button>
+  </div>
+</div>
+
   <div class="topbar">
     <div style="display:flex;align-items:center;gap:12px">
       <button class="hamburger" onclick="toggleSidebar()">☰</button>
@@ -585,7 +632,14 @@ textarea{resize:vertical;min-height:72px}
         <div class="page-date" id="pageDate"></div>
       </div>
     </div>
-    <div class="topbar-right">
+    <div class="topbar-right" id="topbar-right">
+      <!-- Admin controls - shown only for admin via JS -->
+      <button id="sandbox-toggle-btn" class="sandbox-toggle" onclick="toggleSandboxMode()" 
+              title="Modo sandbox - pruebas aisladas de producción"
+              style="display:none">🧸 Sandbox</button>
+      <button id="admin-users-btn" onclick="toggleAdminUsersPanel()" 
+              title="Seleccionar usuario a administrar"
+              style="display:none;padding:6px 12px;border-radius:7px;border:1px solid var(--border);background:var(--cream);color:var(--green-deep);cursor:pointer;font-size:.78rem;font-weight:600">👥 Usuarios</button>
       <span id="sync-status" style="font-size:.72rem;color:var(--text-muted);font-family:var(--font-m);min-width:90px;display:inline-block;text-align:right"></span>
       <button id="sound-toggle-btn" class="notif-btn" onclick="toggleSound()" title="Silenciar alertas" style="font-size:18px;background:none;border:none;cursor:pointer;padding:4px">🔔</button>
       <button class="notif-btn" onclick="toggleNotifPanel()" id="notifBtn">🔔<span class="notif-badge" id="notif-count" style="display:none">0</span></button>
@@ -2822,12 +2876,36 @@ function showSyncStatus(msg, color){
 // ========== FIREBASE SYNC ==========
 function syncToCloud(key){
   if(!_syncEnabled || !_fundoId) return;
+  
+  // RBAC: validate write permission
+  if(_impersonatingFundoId && !_isAdmin){
+    console.error('[RBAC] Non-admin cannot impersonate');
+    return;
+  }
+  
+  // Determine target path
+  var targetFundo = _impersonatingFundoId || _fundoId;
+  var path = _sandboxMode ? (targetFundo + '_sandbox') : targetFundo;
+  
   var items = db[key] || [];
-  _db.collection('fundos').doc(_fundoId).collection(key).doc('data')
+  _db.collection('fundos').doc(path).collection(key).doc('data')
     .set({ items: items, updatedAt: new Date().toISOString() })
     .then(function(){
-      showSyncStatus('\u2705 Guardado en nube', '#52b788');
-      setTimeout(function(){ showSyncStatus('\uD83D\uDFE2 En vivo', '#52b788'); }, 2000);
+      showSyncStatus('\u2705 Guardado' + (_sandboxMode ? ' [SANDBOX]' : ''), '#52b788');
+      // Write audit log
+      if(_auditEnabled && _userId){
+        _db.collection('auditLog').add({
+          userId: _userId,
+          role: _isAdmin ? 'admin' : 'user',
+          fundoId: targetFundo,
+          sandbox: _sandboxMode,
+          impersonating: _impersonatingFundoId || null,
+          action: 'write',
+          collection: key,
+          itemCount: items.length,
+          timestamp: new Date().toISOString()
+        }).catch(function(){});
+      }
     })
     .catch(function(e){
       showSyncStatus('\u26A0\uFE0F Error sync', '#e07070');
@@ -2840,6 +2918,12 @@ var _listeners = [];
 
 function loadFromCloud(){
   if(!_fundoId) return;
+  // Determine source path (sandbox or real, impersonated or own)
+  var targetFundo = _impersonatingFundoId || _fundoId;
+  var path = _sandboxMode ? (targetFundo + '_sandbox') : targetFundo;
+  if(path !== _fundoId || _sandboxMode || _impersonatingFundoId){
+    console.log('[MultiTenant] Loading from path:', path, _sandboxMode ? '[SANDBOX]' : '', _impersonatingFundoId ? '[IMPERSONATING: '+_impersonatingName+']' : '');
+  }
   showSyncStatus('\uD83D\uDD04 Cargando...', '#e9a84c');
   
   var loadedCount = 0;
@@ -2856,7 +2940,9 @@ function loadFromCloud(){
     }
     
     try {
-      var ref = _db.collection('fundos').doc(_fundoId).collection(key).doc('data');
+      var loadPath = (_impersonatingFundoId || _fundoId);
+      var loadFinal = _sandboxMode ? (loadPath + '_sandbox') : loadPath;
+      var ref = _db.collection('fundos').doc(loadFinal).collection(key).doc('data');
       
       window._firebaseListeners[key] = ref.onSnapshot(function(doc){
         if(doc.exists && doc.data() && doc.data().items){
@@ -3228,6 +3314,161 @@ function docambiarPW(){
     if(e.code==='auth/wrong-password') toast('\u274c Contrase\u00f1a actual incorrecta');
     else toast('\u274c Error: '+e.message);
   });
+}
+
+// ================================================================
+// MULTI-TENANT: SANDBOX MODE & USER IMPERSONATION
+// ================================================================
+
+function toggleSandboxMode(){
+  if(!_isAdmin){ toast('\u26a0\uFE0F Solo el administrador puede usar sandbox'); return; }
+  _sandboxMode = !_sandboxMode;
+  
+  var btn = document.getElementById('sandbox-toggle-btn');
+  if(btn){
+    btn.style.background = _sandboxMode ? '#e9a84c' : '';
+    btn.textContent = _sandboxMode ? '\uD83E\uDDF8 SANDBOX ON' : '\uD83E\uDDF8 Sandbox';
+    btn.title = _sandboxMode ? 'Modo pruebas activo - datos NO afectan producción' : 'Activar modo pruebas';
+  }
+  
+  updateImpersonationBanner();
+  
+  // Reload data from new path
+  db = {}; KEYS.forEach(function(k){ db[k]=[]; });
+  loadFromCloud();
+  toast(_sandboxMode ? '\uD83E\uDDF8 Sandbox activado — datos de prueba aislados' : '\u2705 Volviendo a producción');
+}
+
+function adminSelectUser(fundoId, nombre){
+  if(!_isAdmin){ toast('\u26a0\uFE0F Acceso denegado'); return; }
+  if(!fundoId){ 
+    // Deselect - return to own data
+    _impersonatingFundoId = null;
+    _impersonatingName = null;
+    toast('\u2705 Operando con datos propios');
+  } else {
+    _impersonatingFundoId = fundoId;
+    _impersonatingName = nombre;
+    toast('\uD83D\uDC64 Operando como: ' + nombre);
+  }
+  updateImpersonationBanner();
+  // Reload data from selected user's path
+  db = {}; KEYS.forEach(function(k){ db[k]=[]; });
+  loadFromCloud();
+}
+
+function updateImpersonationBanner(){
+  var banner = document.getElementById('impersonation-banner');
+  if(!banner) return;
+  
+  if(_sandboxMode || _impersonatingFundoId){
+    banner.style.display = 'flex';
+    var parts = [];
+    if(_sandboxMode) parts.push('\uD83E\uDDF8 MODO SANDBOX — Los cambios NO afectan producción');
+    if(_impersonatingFundoId) parts.push('\uD83D\uDC64 Operando como: <strong>' + (_impersonatingName||_impersonatingFundoId) + '</strong>');
+    banner.innerHTML = parts.join(' &nbsp;|&nbsp; ') + 
+      ' &nbsp;<button onclick="exitImpersonation()" style="margin-left:12px;padding:3px 10px;border:none;border-radius:5px;background:rgba(255,255,255,.3);cursor:pointer;font-size:.78rem">✕ Salir</button>';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+function exitImpersonation(){
+  _impersonatingFundoId = null;
+  _impersonatingName = null;
+  _sandboxMode = false;
+  var btn = document.getElementById('sandbox-toggle-btn');
+  if(btn){ btn.style.background=''; btn.textContent='\uD83E\uDDF8 Sandbox'; }
+  updateImpersonationBanner();
+  db = {}; KEYS.forEach(function(k){ db[k]=[]; });
+  loadFromCloud();
+  toast('\u2705 Volviendo a datos propios');
+}
+
+function cloneToSandbox(){
+  if(!_isAdmin){ toast('\u26a0\uFE0F Solo admin puede clonar'); return; }
+  if(!confirm('¿Clonar datos actuales al sandbox? Los datos de sandbox serán reemplazados.')) return;
+  
+  var sourcePath = _impersonatingFundoId || _fundoId;
+  var sandboxPath = sourcePath + '_sandbox';
+  
+  // Copy each key from production to sandbox
+  var promises = KEYS.map(function(key){
+    return _db.collection('fundos').doc(sourcePath).collection(key).doc('data').get()
+      .then(function(doc){
+        if(doc.exists){
+          return _db.collection('fundos').doc(sandboxPath).collection(key).doc('data')
+            .set(doc.data());
+        }
+      });
+  });
+  
+  Promise.all(promises).then(function(){
+    toast('\u2705 Datos clonados al sandbox. Activando sandbox...');
+    // Write audit log
+    _db.collection('auditLog').add({
+      userId: _userId, role: 'admin',
+      action: 'clone_to_sandbox',
+      sourceId: sourcePath, targetId: sandboxPath,
+      timestamp: new Date().toISOString()
+    }).catch(function(){});
+    setTimeout(function(){ toggleSandboxMode(); }, 500);
+  }).catch(function(e){
+    toast('\u26a0\uFE0F Error clonando: ' + e.message);
+  });
+}
+
+function renderUsersPanel(){
+  if(!_isAdmin || !_fundoId) return;
+  var lista = document.getElementById('admin-users-list');
+  if(!lista) return;
+  
+  _db.collection('usuarios').get().then(function(snap){
+    var users = [];
+    snap.forEach(function(doc){
+      var d = doc.data(); d.id = doc.id;
+      users.push(d);
+    });
+    
+    if(!users.length){
+      lista.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem">Sin usuarios registrados</p>';
+      return;
+    }
+    
+    lista.innerHTML = users.map(function(u, i){
+      var fid = u.fundoId || u.id;
+      var nom = (u.nombre || u.email || u.id.substring(0,12)).replace(/"/g,'');
+      var isMe = fid === _fundoId;
+      var isCurrent = fid === _impersonatingFundoId;
+      var bg = isCurrent ? 'var(--green-mid)' : 'var(--cream)';
+      var col = isCurrent ? '#fff' : 'var(--green-deep)';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">' +
+        '<div style="flex:1">' +
+          '<div style="font-weight:600;font-size:.88rem">' + nom + '</div>' +
+          '<div style="font-size:.73rem;color:var(--text-muted)">' + (u.email||fid.substring(0,16)) + ' \u00b7 ' + (u.rol||'user') + '</div>' +
+        '</div>' +
+        (isMe ? '<span style="font-size:.72rem;color:var(--green-mid);font-weight:700">TU CUENTA</span>' : '') +
+        '<button data-fundo="' + fid + '" data-nombre="' + nom + '" ' +
+          'style="padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:' + bg + ';color:' + col + ';font-size:.75rem;cursor:pointer;touch-action:manipulation" ' +
+          'onclick="var f=this.dataset.fundo,n=this.dataset.nombre;adminSelectUser(f,n)">' +
+          (isCurrent ? '\u2713 Activo' : '\uD83D\uDC41\uFE0F Ver') +
+        '</button>' +
+      '</div>';
+    }).join('');
+    
+  }).catch(function(e){
+    lista.innerHTML = '<p style="color:var(--red-soft);font-size:.83rem">Error: ' + e.message + '</p>';
+  });
+}
+
+
+function toggleAdminUsersPanel(){
+  if(!_isAdmin) return;
+  var panel = document.getElementById('admin-user-panel');
+  if(!panel) return;
+  var isOpen = panel.classList.contains('open');
+  if(!isOpen){ renderUsersPanel(); }
+  panel.classList.toggle('open');
 }
 function save(k){ 
   var data = JSON.stringify(db[k]);
@@ -6432,6 +6673,11 @@ function syncAllJornadasToGastos(){
 // ========== AUTH & MULTI-USER SYSTEM ==========
 var _fundoId = null;  // The shared fundo ID (admin's UID)
 var _isAdmin = false; // Is current user the admin?
+var _sandboxMode = false; // Admin sandbox - isolated test environment
+var _impersonatingFundoId = null; // Admin operating as specific user
+var _impersonatingName = null; // Name of impersonated user
+var _realFundoId = null; // Admin's real fundoId (preserved during impersonation)
+var _auditEnabled = true; // Write audit logs to Firestore
 
 function showPanel(id){
   ['panel-login','panel-register','panel-invite'].forEach(function(p){
@@ -8861,6 +9107,12 @@ function adpClearCache(){
 }
 
 function initAdminPanel(){
+  // Show/hide admin topbar controls
+  var sandboxBtn = document.getElementById('sandbox-toggle-btn');
+  var usersBtn = document.getElementById('admin-users-btn');
+  if(sandboxBtn) sandboxBtn.style.display = _isAdmin ? 'block' : 'none';
+  if(usersBtn) usersBtn.style.display = _isAdmin ? 'block' : 'none';
+  
   if(!_isAdmin) {
     // Remove panel from DOM entirely for non-admins
     var existingPanel = document.getElementById('admin-debug-panel');
