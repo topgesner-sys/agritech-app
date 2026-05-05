@@ -3472,6 +3472,62 @@ function toggleAdminUsersPanel(){
   if(!isOpen){ renderAdminSelectorPanel(); }
   panel.classList.toggle('open');
 }
+
+function resetFacturaForm(){
+  var fields = ['fact-num', 'fact-prov', 'fact-cliente', 'fact-venta', 'fact-desc', 'fact-neto', 'fact-iva-custom', 'fact-iva-monto', 'fact-total', 'fact-fecha-ing', 'fact-fecha-venc', 'fact-notas'];
+  fields.forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    if(el.type==='checkbox') el.checked = true;
+    else el.value = '';
+  });
+  var ivaSel = document.getElementById('fact-iva-pct');
+  if(ivaSel) ivaSel.value = '19';
+  var ivaCustDiv = document.getElementById('fact-iva-custom-div');
+  if(ivaCustDiv) ivaCustDiv.style.display = 'none';
+  var catOtro = document.getElementById('fact-cat-otro');
+  if(catOtro) catOtro.style.display = 'none';
+  var estado = document.getElementById('fact-estado');
+  if(estado) estado.value = 'pendiente';
+  var crearGasto = document.getElementById('fact-crear-gasto');
+  if(crearGasto) crearGasto.checked = true;
+  _editId = null; _editModule = null;
+  var title = document.getElementById('modal-factura-title');
+  if(title) title.textContent = '🧾 Nueva Factura';
+  var btn = document.getElementById('btn-save-factura');
+  if(btn) btn.textContent = '💾 Guardar Factura';
+}
+
+function modoBadge(modo){
+  var styles = {
+    'destajo': 'background:#d1fae5;color:#065f46;border:1px solid #6ee7b7',
+    'jornal':  'background:#dbeafe;color:#1e40af;border:1px solid #93c5fd',
+    'mixto':   'background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd'
+  };
+  var style = styles[modo] || 'background:#f3f4f6;color:#374151;border:1px solid #d1d5db';
+  return '<span style="' + style + ';padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:700">'
+    + (modo||'jornal') + '</span>';
+}
+
+function buildJornadaDetalle(j){
+  var parts = [];
+  if(!j) return '—';
+  if(j.modo === 'destajo' || j.modo === 'mixto'){
+    if((j.paltaBins||0)>0)   parts.push((j.paltaBins) + ' BINs');
+    if((j.paltaKg||0)>0)    parts.push((j.paltaKg) + 'kg plt');
+    if((j.frutC1||0)>0)     parts.push((j.frutC1) + ' cj1ª');
+    if((j.frutC2||0)>0)     parts.push((j.frutC2) + ' cj2ª');
+    if((j.frutKg||0)>0)     parts.push((j.frutKg) + 'kg frut');
+    if((j.cargaCant||0)>0)  parts.push((j.cargaCant) + ' ' + (j.cargaUnidad||''));
+  }
+  if(j.modo === 'jornal' || j.modo === 'mixto'){
+    if((j.horas||0)>0) parts.push((j.horas) + 'h');
+    if(j.tarea && j.tarea !== 'Cosecha') parts.push(j.tarea);
+  }
+  if(!parts.length && j.tarea) return j.tarea;
+  return parts.length ? parts.join(' · ') : '—';
+}
+
 function save(k){ 
   var data = JSON.stringify(db[k]);
   // Only set lock if not already locked longer (delete sets 30s lock)
@@ -6671,6 +6727,10 @@ function syncAllJornadasToGastos(){
   }
   return {registradas: registradas, omitidas: omitidas};
 }
+
+
+
+
 
 // ========== AUTH & MULTI-USER SYSTEM ==========
 var _fundoId = null;  // The shared fundo ID (admin's UID)
